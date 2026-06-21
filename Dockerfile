@@ -10,8 +10,6 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --chown=node:node . .
 
-RUN mkdir -p /app/public/uploads && chown -R node:node /app/public/uploads
-
 USER node
 
 EXPOSE 3000

@@ -1,10 +1,5 @@
 var test = require('node:test');
 var assert = require('node:assert/strict');
-var fs = require('fs');
-var os = require('os');
-var path = require('path');
-var temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'amamy-expense-test-'));
-process.env.UPLOAD_DIR = path.join(temporaryDirectory, 'uploads');
 process.env.BUDGET_PASSWORD = 'test-password';
 process.env.MONGODB_DB = 'quanlychitieu_test_' + process.pid;
 
@@ -28,7 +23,6 @@ test.after(async function() {
   });
   await store.dropDatabase();
   await store.close();
-  await fs.promises.rm(temporaryDirectory, { recursive: true, force: true });
 });
 
 async function jsonRequest(url, options) {
@@ -62,6 +56,7 @@ test('budget endpoint checks password and persists monthly budget', async functi
 });
 
 test('expense lifecycle updates summary and removes receipt file', async function() {
+  var receiptContent = Buffer.alloc(300 * 1024, 7);
   var invalid = await jsonRequest('/api/expenses', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -90,7 +85,7 @@ test('expense lifecycle updates summary and removes receipt file', async functio
       receipts: [{
         name: 'receipt.png',
         type: 'image/png',
-        data: 'data:image/png;base64,iVBORw0KGgo='
+        data: 'data:image/png;base64,' + receiptContent.toString('base64')
       }]
     })
   });
@@ -100,17 +95,61 @@ test('expense lifecycle updates summary and removes receipt file', async functio
   var receiptUrl = created.body.expense.receipts[0].url;
   var receiptResponse = await fetch(baseUrl + receiptUrl);
   assert.equal(receiptResponse.status, 200);
+  assert.equal(receiptResponse.headers.get('content-type'), 'image/png');
+  assert.equal((await receiptResponse.arrayBuffer()).byteLength, receiptContent.length);
 
   var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06');
   assert.equal(bootstrap.body.expenses.length, 1);
   assert.equal(bootstrap.body.summary.spent.HN, 45000);
   assert.equal(bootstrap.body.summary.balance.HN, 955000);
 
+  var addedReceipt = await jsonRequest('/api/expenses/' + created.body.expense.id + '/receipts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      receipts: [{
+        name: 'receipt-2.pdf',
+        type: 'application/pdf',
+        data: 'data:application/pdf;base64,' + Buffer.from('%PDF-test').toString('base64')
+      }]
+    })
+  });
+  assert.equal(addedReceipt.response.status, 201);
+  assert.equal(addedReceipt.body.receipts.length, 1);
+
+  var addedReceiptResponse = await fetch(baseUrl + addedReceipt.body.receipts[0].url);
+  assert.equal(addedReceiptResponse.status, 200);
+  assert.equal(addedReceiptResponse.headers.get('content-type'), 'application/pdf');
+
+  var removedReceipt = await fetch(
+    baseUrl + '/api/expenses/' + created.body.expense.id +
+    '/receipts/' + created.body.expense.receipts[0].id,
+    { method: 'DELETE' }
+  );
+  assert.equal(removedReceipt.status, 204);
+  var removedReceiptResponse = await fetch(baseUrl + receiptUrl);
+  assert.equal(removedReceiptResponse.status, 404);
+
+  var replacementReceipt = await jsonRequest('/api/expenses/' + created.body.expense.id + '/receipts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      receipts: [{
+        name: 'replacement.png',
+        type: 'image/png',
+        data: 'data:image/png;base64,' + Buffer.from('replacement').toString('base64')
+      }]
+    })
+  });
+  assert.equal(replacementReceipt.response.status, 201);
+
   var deleted = await fetch(baseUrl + '/api/expenses/' + created.body.expense.id, {
     method: 'DELETE'
   });
   assert.equal(deleted.status, 204);
 
-  var missingReceipt = await fetch(baseUrl + receiptUrl);
-  assert.equal(missingReceipt.status, 404);
+  var missingAddedReceipt = await fetch(baseUrl + addedReceipt.body.receipts[0].url);
+  assert.equal(missingAddedReceipt.status, 404);
+  var missingReplacementReceipt = await fetch(baseUrl + replacementReceipt.body.receipts[0].url);
+  assert.equal(missingReplacementReceipt.status, 404);
 });

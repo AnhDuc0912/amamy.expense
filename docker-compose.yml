@@ -12,9 +12,6 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      UPLOAD_DIR: /app/public/uploads
-    volumes:
-      - ./public/uploads:/app/public/uploads
     healthcheck:
       test:
         - CMD

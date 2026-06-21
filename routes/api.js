@@ -1,19 +1,16 @@
 var express = require('express');
 var crypto = require('crypto');
-var fs = require('fs');
-var path = require('path');
 var options = require('../config/options');
 var store = require('../services/store');
 
 var router = express.Router();
-var uploadsDirectory = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'public', 'uploads');
-var allowedMimeTypes = {
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/gif': '.gif',
-  'image/webp': '.webp',
-  'application/pdf': '.pdf'
-};
+var allowedMimeTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf'
+];
 var maxReceiptSize = 5 * 1024 * 1024;
 
 function currentMonth() {
@@ -97,51 +94,29 @@ function sendError(res, status, message) {
   return res.status(status).json({ error: message });
 }
 
-async function saveReceipts(receipts) {
+function prepareReceipts(receipts) {
   if (!Array.isArray(receipts)) return [];
   if (receipts.length > 2) throw new Error('Chỉ được tải lên tối đa 2 chứng từ');
-
-  await fs.promises.mkdir(uploadsDirectory, { recursive: true });
-  var saved = [];
-
-  try {
-    for (var i = 0; i < receipts.length; i += 1) {
-      var receipt = receipts[i] || {};
-      var extension = allowedMimeTypes[receipt.type];
-      if (!extension) throw new Error('Chứng từ phải là ảnh JPG, PNG, GIF, WEBP hoặc PDF');
-
-      var match = String(receipt.data || '').match(/^data:[^;]+;base64,(.+)$/);
-      if (!match) throw new Error('Dữ liệu chứng từ không hợp lệ');
-
-      var buffer = Buffer.from(match[1], 'base64');
-      if (!buffer.length || buffer.length > maxReceiptSize) {
-        throw new Error('Mỗi chứng từ phải có dung lượng từ 1 byte đến 5 MB');
-      }
-
-      var fileName = crypto.randomBytes(16).toString('hex') + extension;
-      await fs.promises.writeFile(path.join(uploadsDirectory, fileName), buffer);
-      saved.push({
-        name: cleanText(receipt.name, 160) || ('chung-tu' + extension),
-        type: receipt.type,
-        url: '/uploads/' + fileName
-      });
+  return receipts.map(function(receipt) {
+    receipt = receipt || {};
+    if (allowedMimeTypes.indexOf(receipt.type) === -1) {
+      throw new Error('Chứng từ phải là ảnh JPG, PNG, GIF, WEBP hoặc PDF');
     }
-  } catch (error) {
-    await Promise.all(saved.map(function(receipt) {
-      return fs.promises.unlink(path.join(uploadsDirectory, path.basename(receipt.url))).catch(function() {});
-    }));
-    throw error;
-  }
+    var match = String(receipt.data || '').match(/^data:([^;]+);base64,(.+)$/);
+    if (!match || match[1] !== receipt.type) throw new Error('Dữ liệu chứng từ không hợp lệ');
 
-  return saved;
-}
-
-async function deleteReceiptFiles(receipts) {
-  await Promise.all((receipts || []).map(function(receipt) {
-    var fileName = path.basename(receipt.url || '');
-    if (!fileName) return Promise.resolve();
-    return fs.promises.unlink(path.join(uploadsDirectory, fileName)).catch(function() {});
-  }));
+    var buffer = Buffer.from(match[2], 'base64');
+    if (!buffer.length || buffer.length > maxReceiptSize) {
+      throw new Error('Mỗi chứng từ phải có dung lượng từ 1 byte đến 5 MB');
+    }
+    return {
+      id: crypto.randomBytes(16).toString('hex'),
+      name: cleanText(receipt.name, 160) || 'chung-tu',
+      type: receipt.type,
+      size: buffer.length,
+      data: buffer
+    };
+  });
 }
 
 router.get('/bootstrap', async function(req, res, next) {
@@ -166,6 +141,27 @@ router.get('/health', async function(req, res, next) {
       database: health.database,
       time: new Date().toISOString()
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/receipts/:id', async function(req, res, next) {
+  try {
+    if (!/^[a-f0-9]{32}$/.test(req.params.id)) {
+      return sendError(res, 400, 'Mã chứng từ không hợp lệ');
+    }
+    var receipt = await store.getReceipt(req.params.id);
+    if (!receipt) return sendError(res, 404, 'Không tìm thấy chứng từ');
+
+    var content = receipt.data && receipt.data.buffer
+      ? Buffer.from(receipt.data.buffer)
+      : Buffer.from(receipt.data || []);
+    res.set('Content-Type', receipt.type);
+    res.set('Content-Length', String(content.length));
+    res.set('Content-Disposition', 'inline; filename="' + encodeURIComponent(receipt.name) + '"');
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.send(content);
   } catch (error) {
     next(error);
   }
@@ -205,7 +201,7 @@ router.post('/expenses', async function(req, res, next) {
       return sendError(res, 400, 'Ngày chi không hợp lệ');
     }
 
-    receipts = await saveReceipts(body.receipts);
+    receipts = prepareReceipts(body.receipts);
     var expense = {
       id: crypto.randomBytes(12).toString('hex'),
       branch: body.branch,
@@ -222,10 +218,39 @@ router.post('/expenses', async function(req, res, next) {
     await store.createExpense(expense);
     res.status(201).json({ expense: publicExpense(expense) });
   } catch (error) {
-    if (receipts.length) await deleteReceiptFiles(receipts);
     if (error.message && error.message.toLocaleLowerCase('vi').indexOf('chứng từ') !== -1) {
       return sendError(res, 400, error.message);
     }
+    next(error);
+  }
+});
+
+router.post('/expenses/:id/receipts', async function(req, res, next) {
+  try {
+    var receipts = prepareReceipts(req.body.receipts);
+    if (!receipts.length) return sendError(res, 400, 'Vui lòng chọn ít nhất một chứng từ');
+
+    var added = await store.addReceipts(req.params.id, receipts);
+    if (!added) return sendError(res, 404, 'Không tìm thấy khoản chi');
+    res.status(201).json({ receipts: added });
+  } catch (error) {
+    if (error.code === 'RECEIPT_LIMIT' ||
+        (error.message && error.message.toLocaleLowerCase('vi').indexOf('chứng từ') !== -1)) {
+      return sendError(res, 400, error.message);
+    }
+    next(error);
+  }
+});
+
+router.delete('/expenses/:expenseId/receipts/:receiptId', async function(req, res, next) {
+  try {
+    if (!/^[a-f0-9]{32}$/.test(req.params.receiptId)) {
+      return sendError(res, 400, 'Mã chứng từ không hợp lệ');
+    }
+    var deleted = await store.deleteReceipt(req.params.expenseId, req.params.receiptId);
+    if (!deleted) return sendError(res, 404, 'Không tìm thấy chứng từ');
+    res.status(204).end();
+  } catch (error) {
     next(error);
   }
 });
@@ -235,7 +260,6 @@ router.delete('/expenses/:id', async function(req, res, next) {
     var deleted = await store.deleteExpense(req.params.id);
 
     if (!deleted) return sendError(res, 404, 'Không tìm thấy khoản chi');
-    await deleteReceiptFiles(deleted.receipts);
     res.status(204).end();
   } catch (error) {
     next(error);

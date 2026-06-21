@@ -5,6 +5,8 @@ let state = {
 };
 let selectedFiles = [];
 let optionsInitialized = false;
+let receiptUpdateExpenseId = null;
+let receiptUpdateButton = null;
 let appliedFilters = {
     branch: "",
     route: "",
@@ -84,6 +86,7 @@ async function init() {
         window.location.href = "/api/expenses.csv";
     };
     $("expenseRows").addEventListener("click", handleTableClick);
+    $("receiptUpdateInput").addEventListener("change", uploadAdditionalReceipts);
     setupUpload();
 
     try {
@@ -319,9 +322,18 @@ function renderTable() {
 
     rows.innerHTML = expenses.map(expense => {
         const receipts = (expense.receipts || []).map((receipt, index) =>
+            `<span class="receiptItem">` +
             `<a class="receiptLink" href="${escapeHtml(receipt.url)}" target="_blank" rel="noopener">` +
-            `${receipt.type.startsWith("image/") ? "Ảnh" : "PDF"} ${index + 1}</a>`
+            `${receipt.type.startsWith("image/") ? "Ảnh" : "PDF"} ${index + 1}</a>` +
+            `<button type="button" class="removeReceipt" title="Xóa chứng từ" aria-label="Xóa chứng từ" ` +
+            `data-delete-receipt-id="${escapeHtml(receipt.id)}" ` +
+            `data-expense-id="${escapeHtml(expense.id)}">×</button></span>`
         ).join("");
+        const canAddReceipt = (expense.receipts || []).length < 2;
+        const addReceiptButton = canAddReceipt
+            ? `<button type="button" class="addReceipt" data-add-receipt-id="${escapeHtml(expense.id)}">` +
+              `${receipts ? "Thêm chứng từ" : "Bổ sung chứng từ"}</button>`
+            : "";
         return `<tr>
             <td>${escapeHtml(expense.date)}</td>
             <td><span class="badge">${escapeHtml(expense.branch)}</span></td>
@@ -330,13 +342,29 @@ function renderTable() {
             <td>${escapeHtml(expense.spentBy)}</td>
             <td class="money">${fmt(expense.amount)}</td>
             <td>${escapeHtml(expense.note)}</td>
-            <td><div class="imgBtns">${receipts || "-"}</div></td>
+            <td><div class="imgBtns">${receipts}${addReceiptButton}</div></td>
             <td><button class="delete" data-delete-id="${escapeHtml(expense.id)}">Xóa</button></td>
         </tr>`;
     }).join("");
 }
 
 async function handleTableClick(event) {
+    const removeReceiptButton = event.target.closest("[data-delete-receipt-id]");
+    if (removeReceiptButton) {
+        await removeReceipt(removeReceiptButton);
+        return;
+    }
+
+    const addReceiptButton = event.target.closest("[data-add-receipt-id]");
+    if (addReceiptButton) {
+        receiptUpdateExpenseId = addReceiptButton.dataset.addReceiptId;
+        receiptUpdateButton = addReceiptButton;
+        const input = $("receiptUpdateInput");
+        input.value = "";
+        input.click();
+        return;
+    }
+
     const button = event.target.closest("[data-delete-id]");
     if (!button || !confirm("Xóa khoản chi này?")) return;
 
@@ -347,6 +375,62 @@ async function handleTableClick(event) {
     } catch (error) {
         button.disabled = false;
         alert(error.message);
+    }
+}
+
+async function removeReceipt(button) {
+    if (!confirm("Xóa chứng từ này?")) return;
+
+    const expenseId = button.dataset.expenseId;
+    const receiptId = button.dataset.deleteReceiptId;
+    setButtonLoading(button, true, "");
+    try {
+        await request(
+            `/api/expenses/${encodeURIComponent(expenseId)}/receipts/${encodeURIComponent(receiptId)}`,
+            { method: "DELETE" }
+        );
+        await loadData();
+    } catch (error) {
+        setButtonLoading(button, false);
+        alert(error.message);
+    }
+}
+
+async function uploadAdditionalReceipts(event) {
+    const files = [...event.target.files];
+    if (!files.length || !receiptUpdateExpenseId) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
+    const validFiles = files.filter(file => allowedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024);
+    if (validFiles.length !== files.length) {
+        alert("Chỉ nhận ảnh JPG, PNG, GIF, WEBP hoặc PDF, tối đa 5 MB mỗi file.");
+        return;
+    }
+
+    const expense = state.expenses.find(item => item.id === receiptUpdateExpenseId);
+    const availableSlots = 2 - ((expense && expense.receipts) || []).length;
+    if (validFiles.length > availableSlots) {
+        alert(`Khoản chi này chỉ còn có thể thêm ${availableSlots} chứng từ.`);
+        return;
+    }
+
+    const button = receiptUpdateButton;
+    setButtonLoading(button, true, "Đang tải...");
+    try {
+        const receipts = await Promise.all(validFiles.map(fileToDataURL));
+        await request(`/api/expenses/${encodeURIComponent(receiptUpdateExpenseId)}/receipts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ receipts })
+        });
+        await loadData();
+    } catch (error) {
+        setButtonLoading(button, false);
+        alert(error.message);
+    } finally {
+        receiptUpdateExpenseId = null;
+        receiptUpdateButton = null;
+        event.target.value = "";
     }
 }
 

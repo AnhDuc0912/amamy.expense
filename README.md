@@ -43,10 +43,8 @@ docker compose down
 ## Lưu trữ
 
 - Ngân sách và khoản chi: MongoDB Atlas (`budgets`, `expenses`)
-- Ảnh/PDF chứng từ: `public/uploads/`
+- Ảnh/PDF chứng từ: collection MongoDB Atlas `receipts`
 - Tối đa 2 chứng từ cho mỗi khoản chi, 5 MB mỗi file
-
-Có thể đổi vị trí file chứng từ bằng biến môi trường `UPLOAD_DIR`.
 
 ## API
 
@@ -54,5 +52,8 @@ Có thể đổi vị trí file chứng từ bằng biến môi trường `UPLOA
 - `GET /api/bootstrap?month=YYYY-MM`
 - `PUT /api/budgets/:month`
 - `POST /api/expenses`
+- `POST /api/expenses/:id/receipts`
+- `DELETE /api/expenses/:expenseId/receipts/:receiptId`
 - `DELETE /api/expenses/:id`
+- `GET /api/receipts/:id`
 - `GET /api/expenses.csv`
