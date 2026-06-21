@@ -12,11 +12,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DB_HOST: host.docker.internal
-      DB_PORT: "${DB_PORT:-3306}"
       UPLOAD_DIR: /app/public/uploads
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./public/uploads:/app/public/uploads
     healthcheck:

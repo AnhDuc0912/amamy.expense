@@ -3,16 +3,10 @@ var assert = require('node:assert/strict');
 var fs = require('fs');
 var os = require('os');
 var path = require('path');
-var mysql = require('mysql2/promise');
-
 var temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'amamy-expense-test-'));
 process.env.UPLOAD_DIR = path.join(temporaryDirectory, 'uploads');
 process.env.BUDGET_PASSWORD = 'test-password';
-process.env.DB_HOST = process.env.DB_HOST || '127.0.0.1';
-process.env.DB_PORT = process.env.DB_PORT || '3306';
-process.env.DB_USER = process.env.DB_USER || 'root';
-process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'mysql';
-process.env.DB_NAME = 'quanlychitieu_test_' + process.pid;
+process.env.MONGODB_DB = 'quanlychitieu_test_' + process.pid;
 
 var app = require('../app');
 var store = require('../services/store');
@@ -32,15 +26,8 @@ test.after(async function() {
   await new Promise(function(resolve) {
     server.close(resolve);
   });
+  await store.dropDatabase();
   await store.close();
-  var connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
-  });
-  await connection.query('DROP DATABASE IF EXISTS `' + process.env.DB_NAME + '`');
-  await connection.end();
   await fs.promises.rm(temporaryDirectory, { recursive: true, force: true });
 });
 
@@ -54,7 +41,7 @@ test('health endpoint responds', async function() {
   var result = await jsonRequest('/api/health');
   assert.equal(result.response.status, 200);
   assert.equal(result.body.status, 'ok');
-  assert.equal(result.body.database, process.env.DB_NAME);
+  assert.equal(result.body.database, process.env.MONGODB_DB);
 });
 
 test('budget endpoint checks password and persists monthly budget', async function() {
