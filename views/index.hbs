@@ -1,0 +1,157 @@
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Amamy</div>
+    <div class="subtitle">Quản lý chi tiêu</div>
+    <nav>
+      <a href="#dashboard" class="active">Dashboard</a>
+      <a href="#addExpense">Thêm khoản chi</a>
+      <a href="#expenseList">Danh sách</a>
+      <a href="#reports">Báo cáo</a>
+    </nav>
+    <div class="sideBox">
+      <div>Quỹ còn lại</div>
+      <p>HN: <b id="sideHn">0 đ</b></p>
+      <p>HCM: <b id="sideHcm">0 đ</b></p>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <h1>Dashboard</h1>
+        <p>Tổng quan chi tiêu cửa hàng HN & HCM</p>
+      </div>
+      <button id="exportBtn">Xuất CSV</button>
+    </header>
+
+    <section id="dashboard" class="cards">
+      <div class="card"><span>Quỹ HN còn lại</span><strong id="hnBalance">0 đ</strong><small id="hnSpent">Đã chi: 0
+          đ</small></div>
+      <div class="card"><span>Quỹ HCM còn lại</span><strong id="hcmBalance">0 đ</strong><small id="hcmSpent">Đã chi: 0
+          đ</small></div>
+      <div class="card"><span>Tổng chi tháng này</span><strong id="monthSpent">0 đ</strong><small id="totalBudget">Ngân
+          sách: 0 đ</small></div>
+      <div class="card warning"><span>Khoản thiếu ảnh</span><strong id="missingImages">0</strong><small>Cần bổ sung
+          chứng từ</small></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Thiết lập quỹ đầu tháng</h2>
+        <div class="row two">
+          <label>Quỹ HN<input id="budgetHN" inputmode="numeric" placeholder="VD: 10000000" /></label>
+          <label>Quỹ HCM<input id="budgetHCM" inputmode="numeric" placeholder="VD: 10000000" /></label>
+        </div>
+        <button id="saveBudgetBtn">Lưu quỹ</button>
+        <p class="hint">Cần mật khẩu để điều chỉnh ngân sách.</p>
+      </div>
+
+      <div id="addExpense" class="panel large">
+        <h2>Thêm khoản chi</h2>
+        <form id="expenseForm">
+          <div class="row three">
+            <label>Chi nhánh *
+              <select id="branch" required>
+                <option>HN</option>
+                <option>HCM</option>
+              </select>
+            </label>
+            <label>Chiều vận chuyển *
+              <select id="route" required></select>
+            </label>
+            <label>Danh mục *
+              <select id="category" required></select>
+            </label>
+          </div>
+          <div class="row three">
+            <label>Số tiền (VND) *<input id="amount" inputmode="numeric" placeholder="VD: 45000" required /></label>
+            <label>Ai chi tiêu *<select id="spentBy" required></select></label>
+            <label>Ngày chi *<input id="date" type="date" required /></label>
+          </div>
+          <label>Ghi chú<textarea id="note" placeholder="VD: Viettel lấy hàng Nhật Việt"></textarea></label>
+
+          <div class="upload" id="dropZone">
+            <input id="receipts" type="file" accept="image/*,.pdf" multiple hidden />
+            <div class="uploadIcon">＋</div>
+            <b>Kéo thả ảnh vào đây</b>
+            <span>hoặc bấm để chọn tối đa 2 ảnh</span>
+          </div>
+          <div id="preview" class="preview"></div>
+          <div class="actions"><button type="reset" class="secondary">Xóa trắng</button><button type="submit">Lưu khoản
+              chi</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="expenseList" class="panel tablePanel">
+      <div class="tableHeader">
+        <div class="tableTitle">
+          <h2>Danh sách chi tiêu</h2>
+          <span id="expenseCount" class="resultCount"></span>
+        </div>
+        <div class="filters">
+          <select id="filterBranch">
+            <option value="">Tất cả chi nhánh</option>
+            <option>HN</option>
+            <option>HCM</option>
+          </select>
+          <select id="filterRoute">
+            <option value="">Tất cả chiều</option>
+          </select>
+          <select id="filterCategory">
+            <option value="">Tất cả danh mục</option>
+          </select>
+          <select id="filterPerson">
+            <option value="">Tất cả người chi</option>
+          </select>
+          <label class="dateFilter"><span>Từ ngày</span>
+            <input id="filterDateFrom" type="date" />
+          </label>
+          <label class="dateFilter"><span>Đến ngày</span>
+            <input id="filterDateTo" type="date" />
+          </label>
+          <div class="filterSearch">
+            <input id="search" placeholder="Tìm ghi chú..." />
+          </div>
+          <div class="filterActions">
+            <button id="applyFilters" type="button">Áp dụng</button>
+            <button id="clearFilters" type="button" class="secondary filterClear">Xóa lọc</button>
+          </div>
+        </div>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>CN</th>
+              <th>Chiều</th>
+              <th>Danh mục</th>
+              <th>Ai chi</th>
+              <th>Số tiền</th>
+              <th>Ghi chú</th>
+              <th>Ảnh</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="expenseRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="reports" class="reports">
+      <div class="panel">
+        <h2>Chi phí theo chiều</h2>
+        <div id="routeReport"></div>
+      </div>
+      <div class="panel">
+        <h2>Chi phí theo danh mục</h2>
+        <div id="categoryReport"></div>
+      </div>
+      <div class="panel">
+        <h2>Top người chi</h2>
+        <div id="personReport"></div>
+      </div>
+    </section>
+  </main>
+</div>
