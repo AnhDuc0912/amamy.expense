@@ -118,7 +118,7 @@ header p,
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
   margin-bottom: 16px
 }
@@ -412,6 +412,16 @@ th {
   color: #0f1b33
 }
 
+.editAmount {
+  display: block;
+  margin-top: 7px;
+  padding: 7px 9px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+  white-space: nowrap
+}
+
 .badge {
   display: inline-block;
   padding: 5px 9px;
@@ -492,8 +502,16 @@ button:disabled {
 
 .reports {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px
+}
+
+.compact {
+  grid-template-columns: 1fr
+}
+
+.auditTable {
+  min-width: 860px
 }
 
 .reportRow {

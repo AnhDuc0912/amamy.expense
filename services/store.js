@@ -35,7 +35,9 @@ async function initialize() {
       database.collection('expenses').createIndex({ category: 1 }),
       database.collection('expenses').createIndex({ spentBy: 1 }),
       database.collection('receipts').createIndex({ id: 1 }, { unique: true }),
-      database.collection('receipts').createIndex({ expenseId: 1 })
+      database.collection('receipts').createIndex({ expenseId: 1 }),
+      database.collection('auditLogs').createIndex({ id: 1 }, { unique: true }),
+      database.collection('auditLogs').createIndex({ createdAt: -1 })
     ]);
   })().catch(async function(error) {
     initialization = null;
@@ -65,6 +67,20 @@ function publicExpense(document) {
   };
 }
 
+function publicAuditLog(document) {
+  return {
+    id: document.id,
+    action: document.action,
+    actor: document.actor,
+    expenseId: document.expenseId,
+    before: document.before || null,
+    after: document.after || null,
+    createdAt: document.createdAt instanceof Date
+      ? document.createdAt.toISOString()
+      : document.createdAt
+  };
+}
+
 async function read() {
   await initialize();
   var results = await Promise.all([
@@ -74,6 +90,11 @@ async function read() {
       .toArray(),
     database.collection('budgets')
       .find({}, { projection: { _id: 0 } })
+      .toArray(),
+    database.collection('auditLogs')
+      .find({}, { projection: { _id: 0 } })
+      .sort({ createdAt: -1 })
+      .limit(80)
       .toArray()
   ]);
 
@@ -87,7 +108,8 @@ async function read() {
 
   return {
     budgets: budgets,
-    expenses: results[0].map(publicExpense)
+    expenses: results[0].map(publicExpense),
+    auditLogs: results[2].map(publicAuditLog)
   };
 }
 
@@ -266,6 +288,38 @@ async function deleteExpense(id) {
   return publicExpense(deleted);
 }
 
+async function updateExpenseAmount(id, amount) {
+  await initialize();
+  var expenses = database.collection('expenses');
+  var current = await expenses.findOne({ id: id }, { projection: { _id: 0 } });
+  if (!current) return null;
+
+  await expenses.updateOne(
+    { id: id },
+    { $set: { amount: amount, updatedAt: new Date() } }
+  );
+
+  var updated = Object.assign({}, current, { amount: amount });
+  return {
+    before: publicExpense(current),
+    after: publicExpense(updated)
+  };
+}
+
+async function createAuditLog(log) {
+  await initialize();
+  await database.collection('auditLogs').insertOne({
+    id: log.id,
+    action: log.action,
+    actor: log.actor,
+    expenseId: log.expenseId,
+    before: log.before || null,
+    after: log.after || null,
+    createdAt: new Date(log.createdAt)
+  });
+  return log;
+}
+
 async function getReceipt(id) {
   await initialize();
   return database.collection('receipts').findOne(
@@ -300,6 +354,8 @@ module.exports = {
   addReceipts: addReceipts,
   deleteReceipt: deleteReceipt,
   deleteExpense: deleteExpense,
+  updateExpenseAmount: updateExpenseAmount,
+  createAuditLog: createAuditLog,
   getReceipt: getReceipt,
   health: health,
   dropDatabase: dropDatabase,

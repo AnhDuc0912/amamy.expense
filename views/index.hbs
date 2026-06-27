@@ -9,9 +9,10 @@
       <a href="#reports">Báo cáo</a>
     </nav>
     <div class="sideBox">
-      <div>Quỹ còn lại</div>
+      <div>Theo dõi nhanh</div>
       <p>HN: <b id="sideHn">0 đ</b></p>
       <p>HCM: <b id="sideHcm">0 đ</b></p>
+      <p>Công ty đã chi: <b id="sideCompany">0 đ</b></p>
     </div>
   </aside>
 
@@ -29,6 +30,8 @@
           đ</small></div>
       <div class="card"><span>Quỹ HCM còn lại</span><strong id="hcmBalance">0 đ</strong><small id="hcmSpent">Đã chi: 0
           đ</small></div>
+      <div class="card"><span>Công ty chi trả</span><strong id="companySpent">0 đ</strong><small>Tài khoản công ty</small>
+      </div>
       <div class="card"><span>Tổng chi tháng này</span><strong id="monthSpent">0 đ</strong><small id="totalBudget">Ngân
           sách: 0 đ</small></div>
       <div class="card warning"><span>Khoản thiếu ảnh</span><strong id="missingImages">0</strong><small>Cần bổ sung
@@ -51,10 +54,7 @@
         <form id="expenseForm">
           <div class="row three">
             <label>Chi nhánh *
-              <select id="branch" required>
-                <option>HN</option>
-                <option>HCM</option>
-              </select>
+              <select id="branch" required></select>
             </label>
             <label>Chiều vận chuyển *
               <select id="route" required></select>
@@ -92,8 +92,6 @@
         <div class="filters">
           <select id="filterBranch">
             <option value="">Tất cả chi nhánh</option>
-            <option>HN</option>
-            <option>HCM</option>
           </select>
           <select id="filterRoute">
             <option value="">Tất cả chiều</option>
@@ -140,7 +138,34 @@
       <input id="receiptUpdateInput" type="file" accept="image/*,.pdf" multiple hidden />
     </section>
 
+    <section class="panel tablePanel">
+      <div class="tableHeader compact">
+        <div class="tableTitle">
+          <h2>Lịch sử thao tác</h2>
+          <span class="resultCount">Theo dõi xoá và sửa số tiền</span>
+        </div>
+      </div>
+      <div class="tableWrap">
+        <table class="auditTable">
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Người thao tác</th>
+              <th>Hành động</th>
+              <th>Khoản chi</th>
+              <th>Thay đổi</th>
+            </tr>
+          </thead>
+          <tbody id="auditRows"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="reports" class="reports">
+      <div class="panel">
+        <h2>Chi phí theo chi nhánh</h2>
+        <div id="branchReport"></div>
+      </div>
       <div class="panel">
         <h2>Chi phí theo chiều</h2>
         <div id="routeReport"></div>

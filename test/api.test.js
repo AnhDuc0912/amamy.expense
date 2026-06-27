@@ -55,6 +55,12 @@ test('budget endpoint checks password and persists monthly budget', async functi
   assert.deepEqual(saved.body.budget, { HN: 1000000, HCM: 2000000 });
 });
 
+test('bootstrap exposes company payer options', async function() {
+  var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06');
+  assert.ok(bootstrap.body.options.branches.includes('Công ty chi trả'));
+  assert.ok(bootstrap.body.options.people.includes('Tài khoản công ty'));
+});
+
 test('expense lifecycle updates summary and removes receipt file', async function() {
   var receiptContent = Buffer.alloc(300 * 1024, 7);
   var invalid = await jsonRequest('/api/expenses', {
@@ -144,7 +150,9 @@ test('expense lifecycle updates summary and removes receipt file', async functio
   assert.equal(replacementReceipt.response.status, 201);
 
   var deleted = await fetch(baseUrl + '/api/expenses/' + created.body.expense.id, {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
   });
   assert.equal(deleted.status, 204);
 
@@ -152,4 +160,95 @@ test('expense lifecycle updates summary and removes receipt file', async functio
   assert.equal(missingAddedReceipt.status, 404);
   var missingReplacementReceipt = await fetch(baseUrl + replacementReceipt.body.receipts[0].url);
   assert.equal(missingReplacementReceipt.status, 404);
+});
+
+test('amount updates require password and are written to audit history', async function() {
+  var created = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HCM',
+      route: 'Việt Đức',
+      category: 'Phí COD',
+      spentBy: 'Trung Cao',
+      amount: 85000,
+      date: '2026-06-23'
+    })
+  });
+  assert.equal(created.response.status, 201);
+
+  var denied = await jsonRequest('/api/expenses/' + created.body.expense.id + '/amount', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'wrong', amount: 95000 })
+  });
+  assert.equal(denied.response.status, 403);
+
+  var updated = await jsonRequest('/api/expenses/' + created.body.expense.id + '/amount', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password', amount: 95000 })
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.expense.amount, 95000);
+
+  var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06');
+  assert.equal(bootstrap.body.summary.spent.HCM, 95000);
+  var updateLog = bootstrap.body.auditLogs.find(function(log) {
+    return log.action === 'update_amount' && log.expenseId === created.body.expense.id;
+  });
+  assert.equal(updateLog.actor, 'Tester');
+  assert.equal(updateLog.before.amount, 85000);
+  assert.equal(updateLog.after.amount, 95000);
+
+  var deleted = await fetch(baseUrl + '/api/expenses/' + created.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+  assert.equal(deleted.status, 204);
+});
+
+test('company-paid expense is included in branch and total summaries', async function() {
+  var created = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'Công ty chi trả',
+      route: 'Nhật Việt',
+      category: 'Phí khác',
+      spentBy: 'Tài khoản công ty',
+      amount: 123000,
+      date: '2026-06-22',
+      note: 'Công ty chi hộ'
+    })
+  });
+  assert.equal(created.response.status, 201);
+
+  var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06');
+  assert.equal(bootstrap.body.summary.spent['Công ty chi trả'], 123000);
+  assert.equal(bootstrap.body.summary.reports.branch['Công ty chi trả'], 123000);
+  assert.equal(bootstrap.body.summary.reports.person['Tài khoản công ty'], 123000);
+  assert.equal(bootstrap.body.summary.totalSpent, 123000);
+
+  var deniedDelete = await fetch(baseUrl + '/api/expenses/' + created.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'wrong' })
+  });
+  assert.equal(deniedDelete.status, 403);
+
+  var deleted = await fetch(baseUrl + '/api/expenses/' + created.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+  assert.equal(deleted.status, 204);
+
+  var bootstrapAfterDelete = await jsonRequest('/api/bootstrap?month=2026-06');
+  var deleteLog = bootstrapAfterDelete.body.auditLogs.find(function(log) {
+    return log.action === 'delete_expense' && log.expenseId === created.body.expense.id;
+  });
+  assert.equal(deleteLog.actor, 'Tester');
+  assert.equal(deleteLog.before.amount, 123000);
 });

@@ -1,5 +1,5 @@
 module.exports = {
-  branches: ['HN', 'HCM'],
+  branches: ['HN', 'HCM', 'Công ty chi trả'],
   routes: [
     'Việt Nhật',
     'Nhật Việt',
@@ -22,5 +22,5 @@ module.exports = {
     'Phí Shopee',
     'Phí khác'
   ],
-  people: ['Công Thức Lê', 'Trung Cao', 'Kế toán', 'Lan Anh', 'Duy', 'Vân']
+  people: ['Công Thức Lê', 'Trung Cao', 'Kế toán', 'Lan Anh', 'Duy', 'Vân', 'Tài khoản công ty']
 };

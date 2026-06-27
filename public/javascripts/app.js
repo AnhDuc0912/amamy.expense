@@ -1,6 +1,7 @@
 let state = {
     options: { branches: [], routes: [], categories: [], people: [] },
     expenses: [],
+    auditLogs: [],
     summary: null
 };
 let selectedFiles = [];
@@ -59,9 +60,11 @@ async function loadData() {
 }
 
 function populateOptions() {
+    optionize($("branch"), state.options.branches, "");
     optionize($("route"), state.options.routes, "-- Chọn chiều vận chuyển --");
     optionize($("category"), state.options.categories, "-- Chọn danh mục --");
     optionize($("spentBy"), state.options.people, "-- Chọn người chi --");
+    optionize($("filterBranch"), state.options.branches, "Tất cả chi nhánh");
     optionize($("filterRoute"), state.options.routes, "Tất cả chiều");
     optionize($("filterCategory"), state.options.categories, "Tất cả danh mục");
     optionize($("filterPerson"), state.options.people, "Tất cả người chi");
@@ -190,8 +193,8 @@ function fileToDataURL(file) {
 
 async function addExpense(event) {
     event.preventDefault();
-    if (!$("route").value || !$("category").value || !$("spentBy").value) {
-        return alert("Vui lòng chọn đủ chiều, danh mục và người chi");
+    if (!$("branch").value || !$("route").value || !$("category").value || !$("spentBy").value) {
+        return alert("Vui lòng chọn đủ chi nhánh, chiều, danh mục và người chi");
     }
 
     const submitButton = event.submitter;
@@ -298,16 +301,20 @@ function clearExpenseFilters() {
 
 function render() {
     const summary = state.summary;
+    const companySpent = summary.spent["Công ty chi trả"] || 0;
     $("hnBalance").textContent = fmt(summary.balance.HN);
     $("hcmBalance").textContent = fmt(summary.balance.HCM);
     $("sideHn").textContent = fmt(summary.balance.HN);
     $("sideHcm").textContent = fmt(summary.balance.HCM);
+    $("sideCompany").textContent = fmt(companySpent);
     $("hnSpent").textContent = "Đã chi: " + fmt(summary.spent.HN);
     $("hcmSpent").textContent = "Đã chi: " + fmt(summary.spent.HCM);
+    $("companySpent").textContent = fmt(companySpent);
     $("monthSpent").textContent = fmt(summary.totalSpent);
     $("totalBudget").textContent = "Ngân sách: " + fmt(summary.totalBudget);
     $("missingImages").textContent = summary.missingReceipts;
     renderTable();
+    renderAuditLogs();
     renderReports();
 }
 
@@ -340,7 +347,11 @@ function renderTable() {
             <td>${escapeHtml(expense.route)}</td>
             <td>${escapeHtml(expense.category)}</td>
             <td>${escapeHtml(expense.spentBy)}</td>
-            <td class="money">${fmt(expense.amount)}</td>
+            <td class="money">${fmt(expense.amount)}
+                <button type="button" class="editAmount" data-edit-amount-id="${escapeHtml(expense.id)}">
+                    Sửa tiền
+                </button>
+            </td>
             <td>${escapeHtml(expense.note)}</td>
             <td><div class="imgBtns">${receipts}${addReceiptButton}</div></td>
             <td><button class="delete" data-delete-id="${escapeHtml(expense.id)}">Xóa</button></td>
@@ -349,6 +360,12 @@ function renderTable() {
 }
 
 async function handleTableClick(event) {
+    const editAmountButton = event.target.closest("[data-edit-amount-id]");
+    if (editAmountButton) {
+        await editExpenseAmount(editAmountButton);
+        return;
+    }
+
     const removeReceiptButton = event.target.closest("[data-delete-receipt-id]");
     if (removeReceiptButton) {
         await removeReceipt(removeReceiptButton);
@@ -368,12 +385,63 @@ async function handleTableClick(event) {
     const button = event.target.closest("[data-delete-id]");
     if (!button || !confirm("Xóa khoản chi này?")) return;
 
+    const credentials = askOperatorCredentials("xóa");
+    if (!credentials) return;
+
     button.disabled = true;
     try {
-        await request(`/api/expenses/${encodeURIComponent(button.dataset.deleteId)}`, { method: "DELETE" });
+        await request(`/api/expenses/${encodeURIComponent(button.dataset.deleteId)}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(credentials)
+        });
         await loadData();
     } catch (error) {
         button.disabled = false;
+        alert(error.message);
+    }
+}
+
+function askOperatorCredentials(action) {
+    const actor = prompt(`Nhập tên người ${action}`);
+    if (actor === null) return null;
+
+    const cleanActor = actor.trim();
+    if (!cleanActor) {
+        alert("Vui lòng nhập người thao tác");
+        return null;
+    }
+
+    const password = prompt("Nhập mật khẩu");
+    if (password === null) return null;
+
+    return { actor: cleanActor, password };
+}
+
+async function editExpenseAmount(button) {
+    const expense = state.expenses.find(item => item.id === button.dataset.editAmountId);
+    if (!expense) return alert("Không tìm thấy khoản chi");
+
+    const rawAmount = prompt("Nhập số tiền mới", String(expense.amount));
+    if (rawAmount === null) return;
+
+    const amount = valNum(rawAmount);
+    if (!amount) return alert("Số tiền phải lớn hơn 0");
+    if (amount === Number(expense.amount)) return;
+
+    const credentials = askOperatorCredentials("chỉnh sửa");
+    if (!credentials) return;
+
+    setButtonLoading(button, true, "Đang lưu...");
+    try {
+        await request(`/api/expenses/${encodeURIComponent(expense.id)}/amount`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...credentials, amount })
+        });
+        await loadData();
+    } catch (error) {
+        setButtonLoading(button, false);
         alert(error.message);
     }
 }
@@ -435,6 +503,7 @@ async function uploadAdditionalReceipts(event) {
 }
 
 function renderReports() {
+    makeReport("branchReport", state.summary.reports.branch);
     makeReport("routeReport", state.summary.reports.route);
     makeReport("categoryReport", state.summary.reports.category);
     makeReport("personReport", state.summary.reports.person);
@@ -447,6 +516,50 @@ function makeReport(id, report) {
             `<div class="reportRow"><span>${escapeHtml(name)}</span><b>${fmt(value)}</b></div>`
         ).join("")
         : "<p class='hint'>Chưa có dữ liệu tháng này</p>";
+}
+
+function renderAuditLogs() {
+    const rows = $("auditRows");
+    const logs = state.auditLogs || [];
+    if (!logs.length) {
+        rows.innerHTML = '<tr><td colspan="5">Chưa có lịch sử thao tác</td></tr>';
+        return;
+    }
+
+    rows.innerHTML = logs.map(log => {
+        const before = log.before || {};
+        const after = log.after || {};
+        const action = log.action === "delete_expense" ? "Xóa khoản chi" : "Sửa số tiền";
+        const expenseLabel = [
+            before.date || after.date,
+            before.branch || after.branch,
+            before.route || after.route,
+            before.category || after.category
+        ].filter(Boolean).join(" · ");
+        const change = log.action === "update_amount"
+            ? `${fmt(before.amount)} → ${fmt(after.amount)}`
+            : fmt(before.amount);
+
+        return `<tr>
+            <td>${escapeHtml(formatDateTime(log.createdAt))}</td>
+            <td>${escapeHtml(log.actor)}</td>
+            <td>${escapeHtml(action)}</td>
+            <td>${escapeHtml(expenseLabel || log.expenseId)}</td>
+            <td class="money">${escapeHtml(change)}</td>
+        </tr>`;
+    }).join("");
+}
+
+function formatDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value || "";
+    return date.toLocaleString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
 }
 
 init();

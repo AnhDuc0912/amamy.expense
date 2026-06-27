@@ -58,16 +58,25 @@ function publicExpense(expense) {
   };
 }
 
+function validPassword(value) {
+  return String(value || '') === String(process.env.BUDGET_PASSWORD || '280836');
+}
+
 function summarize(data, month) {
   var monthlyExpenses = data.expenses.filter(function(expense) {
     return monthOf(expense.date) === month;
   });
   var budget = data.budgets[month] || { HN: 0, HCM: 0 };
-  var spent = { HN: 0, HCM: 0 };
-  var reports = { route: {}, category: {}, person: {} };
+  var spent = {};
+  var reports = { branch: {}, route: {}, category: {}, person: {} };
+
+  options.branches.forEach(function(branch) {
+    spent[branch] = 0;
+  });
 
   monthlyExpenses.forEach(function(expense) {
-    spent[expense.branch] += expense.amount;
+    spent[expense.branch] = (spent[expense.branch] || 0) + expense.amount;
+    reports.branch[expense.branch] = (reports.branch[expense.branch] || 0) + expense.amount;
     reports.route[expense.route] = (reports.route[expense.route] || 0) + expense.amount;
     reports.category[expense.category] = (reports.category[expense.category] || 0) + expense.amount;
     reports.person[expense.spentBy] = (reports.person[expense.spentBy] || 0) + expense.amount;
@@ -81,7 +90,9 @@ function summarize(data, month) {
       HN: budget.HN - spent.HN,
       HCM: budget.HCM - spent.HCM
     },
-    totalSpent: spent.HN + spent.HCM,
+    totalSpent: Object.keys(spent).reduce(function(total, branch) {
+      return total + spent[branch];
+    }, 0),
     totalBudget: budget.HN + budget.HCM,
     missingReceipts: data.expenses.filter(function(expense) {
       return !expense.receipts || expense.receipts.length === 0;
@@ -126,6 +137,7 @@ router.get('/bootstrap', async function(req, res, next) {
     res.json({
       options: options,
       expenses: data.expenses.map(publicExpense),
+      auditLogs: data.auditLogs || [],
       summary: summarize(data, month)
     });
   } catch (error) {
@@ -170,7 +182,7 @@ router.get('/receipts/:id', async function(req, res, next) {
 router.put('/budgets/:month', async function(req, res, next) {
   try {
     if (!validMonth(req.params.month)) return sendError(res, 400, 'Tháng không hợp lệ');
-    if (String(req.body.password || '') !== String(process.env.BUDGET_PASSWORD || '280836')) {
+    if (!validPassword(req.body.password)) {
       return sendError(res, 403, 'Sai mật khẩu điều chỉnh ngân sách');
     }
 
@@ -242,6 +254,38 @@ router.post('/expenses/:id/receipts', async function(req, res, next) {
   }
 });
 
+router.patch('/expenses/:id/amount', async function(req, res, next) {
+  try {
+    var body = req.body || {};
+    if (!validPassword(body.password)) {
+      return sendError(res, 403, 'Sai mật khẩu chỉnh sửa khoản chi');
+    }
+
+    var actor = cleanText(body.actor, 100);
+    if (!actor) return sendError(res, 400, 'Vui lòng nhập người chỉnh sửa');
+
+    var amount = parseAmount(body.amount);
+    if (!amount) return sendError(res, 400, 'Số tiền phải là số nguyên lớn hơn 0');
+
+    var updated = await store.updateExpenseAmount(req.params.id, amount);
+    if (!updated) return sendError(res, 404, 'Không tìm thấy khoản chi');
+
+    await store.createAuditLog({
+      id: crypto.randomBytes(12).toString('hex'),
+      action: 'update_amount',
+      actor: actor,
+      expenseId: req.params.id,
+      before: updated.before,
+      after: updated.after,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({ expense: publicExpense(updated.after) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.delete('/expenses/:expenseId/receipts/:receiptId', async function(req, res, next) {
   try {
     if (!/^[a-f0-9]{32}$/.test(req.params.receiptId)) {
@@ -257,9 +301,28 @@ router.delete('/expenses/:expenseId/receipts/:receiptId', async function(req, re
 
 router.delete('/expenses/:id', async function(req, res, next) {
   try {
+    var body = req.body || {};
+    if (!validPassword(body.password)) {
+      return sendError(res, 403, 'Sai mật khẩu xóa khoản chi');
+    }
+
+    var actor = cleanText(body.actor, 100);
+    if (!actor) return sendError(res, 400, 'Vui lòng nhập người xóa');
+
     var deleted = await store.deleteExpense(req.params.id);
 
     if (!deleted) return sendError(res, 404, 'Không tìm thấy khoản chi');
+
+    await store.createAuditLog({
+      id: crypto.randomBytes(12).toString('hex'),
+      action: 'delete_expense',
+      actor: actor,
+      expenseId: req.params.id,
+      before: deleted,
+      after: null,
+      createdAt: new Date().toISOString()
+    });
+
     res.status(204).end();
   } catch (error) {
     next(error);
