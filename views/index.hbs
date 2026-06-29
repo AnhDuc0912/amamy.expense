@@ -25,6 +25,22 @@
       <button id="exportBtn">Xuất CSV</button>
     </header>
 
+    <section class="topFilters" aria-label="Bộ lọc thời gian">
+      <label class="dateFilter monthFilter"><span>Tháng</span>
+        <input id="filterMonth" type="text" placeholder="Chọn tháng" />
+      </label>
+      <label class="dateFilter"><span>Từ ngày</span>
+        <input id="filterDateFrom" type="text" placeholder="Chọn ngày" />
+      </label>
+      <label class="dateFilter"><span>Đến ngày</span>
+        <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+      </label>
+      <div class="filterActions topFilterActions">
+        <button id="applyFilters" type="button">Áp dụng</button>
+        <button id="clearFilters" type="button" class="secondary filterClear">Xóa lọc</button>
+      </div>
+    </section>
+
     <section id="dashboard" class="cards">
       <div class="card"><span>Quỹ HN còn lại</span><strong id="hnBalance">0 đ</strong><small id="hnSpent">Đã chi: 0
           đ</small></div>
@@ -102,18 +118,8 @@
           <select id="filterPerson">
             <option value="">Tất cả người chi</option>
           </select>
-          <label class="dateFilter"><span>Từ ngày</span>
-            <input id="filterDateFrom" type="date" />
-          </label>
-          <label class="dateFilter"><span>Đến ngày</span>
-            <input id="filterDateTo" type="date" />
-          </label>
           <div class="filterSearch">
             <input id="search" placeholder="Tìm ghi chú..." />
-          </div>
-          <div class="filterActions">
-            <button id="applyFilters" type="button">Áp dụng</button>
-            <button id="clearFilters" type="button" class="secondary filterClear">Xóa lọc</button>
           </div>
         </div>
       </div>

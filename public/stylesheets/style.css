@@ -116,6 +116,68 @@ header p,
   margin: 6px 0 0
 }
 
+.topFilters {
+  display: grid;
+  grid-template-columns: minmax(170px, .8fr) minmax(190px, 1fr) minmax(190px, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(15, 32, 58, .06)
+}
+
+.topFilters .dateFilter {
+  min-height: 44px
+}
+
+.topFilterActions {
+  min-width: 210px
+}
+
+.flatpickr-calendar {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(15, 32, 58, .18);
+  font-family: inherit
+}
+
+.flatpickr-months .flatpickr-month {
+  color: var(--dark);
+  fill: var(--dark)
+}
+
+.flatpickr-current-month,
+.flatpickr-current-month input.cur-year {
+  font-weight: 800
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover {
+  background: var(--blue2);
+  border-color: var(--blue2)
+}
+
+.flatpickr-day.today {
+  border-color: var(--blue)
+}
+
+.flatpickr-monthSelect-month.selected,
+.flatpickr-monthSelect-month.selected:hover {
+  background: var(--blue2);
+  border-color: var(--blue2)
+}
+
+.dateFilter .flatpickr-input[readonly] {
+  cursor: pointer
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -313,7 +375,7 @@ button:hover {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
   gap: 8px
 }
 
@@ -540,6 +602,10 @@ dialog img {
     display: none
   }
 
+  .topFilters {
+    grid-template-columns: 1fr 1fr
+  }
+
   .cards,
   .reports {
     grid-template-columns: 1fr 1fr
@@ -572,8 +638,13 @@ dialog img {
   .reports,
   .three,
   .two,
+  .topFilters,
   .filters {
     grid-template-columns: 1fr
+  }
+
+  .topFilterActions {
+    min-width: 0
   }
 
   .tableHeader {

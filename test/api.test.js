@@ -252,3 +252,62 @@ test('company-paid expense is included in branch and total summaries', async fun
   assert.equal(deleteLog.actor, 'Tester');
   assert.equal(deleteLog.before.amount, 123000);
 });
+
+test('bootstrap and CSV respect date range filters', async function() {
+  var early = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Nhật',
+      category: 'Phí COD',
+      spentBy: 'Kế toán',
+      amount: 11000,
+      date: '2026-06-05',
+      note: 'Ngoài khoảng lọc'
+    })
+  });
+  assert.equal(early.response.status, 201);
+
+  var inRange = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Nhật',
+      category: 'Phí COD',
+      spentBy: 'Kế toán',
+      amount: 22000,
+      date: '2026-06-15',
+      note: 'Trong khoảng lọc'
+    })
+  });
+  assert.equal(inRange.response.status, 201);
+
+  var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06&dateFrom=2026-06-10&dateTo=2026-06-20');
+  assert.equal(bootstrap.body.summary.spent.HN, 22000);
+  assert.equal(bootstrap.body.summary.totalSpent, 22000);
+  assert.equal(bootstrap.body.summary.missingReceipts, 1);
+
+  var csvResponse = await fetch(
+    baseUrl + '/api/expenses.csv?month=2026-06&dateFrom=2026-06-10&dateTo=2026-06-20'
+  );
+  var csv = await csvResponse.text();
+  assert.equal(csvResponse.status, 200);
+  assert.match(csv, /Trong khoảng lọc/);
+  assert.doesNotMatch(csv, /Ngoài khoảng lọc/);
+
+  var rangeOverridesMonth = await jsonRequest('/api/bootstrap?month=2026-07&dateFrom=2026-06-10&dateTo=2026-06-20');
+  assert.equal(rangeOverridesMonth.body.summary.spent.HN, 22000);
+
+  await fetch(baseUrl + '/api/expenses/' + early.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+  await fetch(baseUrl + '/api/expenses/' + inRange.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+});

@@ -8,7 +8,9 @@ let selectedFiles = [];
 let optionsInitialized = false;
 let receiptUpdateExpenseId = null;
 let receiptUpdateButton = null;
+let datePickers = {};
 let appliedFilters = {
+    month: getCurrentMonth(),
     branch: "",
     route: "",
     category: "",
@@ -48,7 +50,7 @@ function optionize(el, items, first) {
 }
 
 async function loadData() {
-    const payload = await request(`/api/bootstrap?month=${getCurrentMonth()}`);
+    const payload = await request(`/api/bootstrap?${filterQueryString()}`);
     state = payload;
     if (!optionsInitialized) {
         populateOptions();
@@ -72,7 +74,12 @@ function populateOptions() {
 
 async function init() {
     $("date").valueAsDate = new Date();
+    $("filterMonth").value = appliedFilters.month;
+    setupDatePickers();
+    if (!datePickers.month) $("filterMonth").addEventListener("change", applyMonthFilter);
     ["filterDateFrom", "filterDateTo"].forEach(id => $(id).addEventListener("input", syncDateFilters));
+    ["filterBranch", "filterRoute", "filterCategory", "filterPerson"]
+        .forEach(id => $(id).addEventListener("change", applyExpenseFilters));
     $("applyFilters").onclick = applyExpenseFilters;
     $("clearFilters").onclick = clearExpenseFilters;
     $("search").addEventListener("keydown", event => {
@@ -86,7 +93,7 @@ async function init() {
         renderPreview();
     }, 0);
     $("exportBtn").onclick = () => {
-        window.location.href = "/api/expenses.csv";
+        window.location.href = `/api/expenses.csv?${filterQueryString()}`;
     };
     $("expenseRows").addEventListener("click", handleTableClick);
     $("receiptUpdateInput").addEventListener("change", uploadAdditionalReceipts);
@@ -99,6 +106,64 @@ async function init() {
     }
 }
 
+function filterQueryString() {
+    const params = new URLSearchParams();
+    params.set("month", appliedFilters.month || getCurrentMonth());
+    if (appliedFilters.dateFrom) params.set("dateFrom", appliedFilters.dateFrom);
+    if (appliedFilters.dateTo) params.set("dateTo", appliedFilters.dateTo);
+    return params.toString();
+}
+
+function setupDatePickers() {
+    if (typeof flatpickr !== "function") return;
+
+    const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
+    const commonDateOptions = {
+        altInput: true,
+        altFormat: "d/m/Y",
+        dateFormat: "Y-m-d",
+        allowInput: true,
+        locale,
+        disableMobile: true
+    };
+
+    if (typeof monthSelectPlugin === "function") {
+        datePickers.month = flatpickr($("filterMonth"), {
+            altInput: true,
+            altFormat: "F Y",
+            dateFormat: "Y-m",
+            defaultDate: appliedFilters.month,
+            locale,
+            disableMobile: true,
+            plugins: [
+                new monthSelectPlugin({
+                    shorthand: false,
+                    dateFormat: "Y-m",
+                    altFormat: "F Y"
+                })
+            ],
+            onChange: function(selectedDates, value) {
+                if (!value || value === appliedFilters.month) return;
+                appliedFilters.month = value;
+                applyMonthFilter();
+            }
+        });
+    }
+
+    datePickers.from = flatpickr($("filterDateFrom"), {
+        ...commonDateOptions,
+        onChange: function() {
+            syncDateFilters();
+        }
+    });
+    datePickers.to = flatpickr($("filterDateTo"), {
+        ...commonDateOptions,
+        onChange: function() {
+            syncDateFilters();
+        }
+    });
+}
+
 async function saveBudget() {
     const password = prompt("Nhập mật khẩu điều chỉnh ngân sách");
     if (password === null) return;
@@ -106,7 +171,7 @@ async function saveBudget() {
     const button = $("saveBudgetBtn");
     button.disabled = true;
     try {
-        await request(`/api/budgets/${getCurrentMonth()}`, {
+        await request(`/api/budgets/${encodeURIComponent(appliedFilters.month || getCurrentMonth())}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -227,8 +292,10 @@ async function addExpense(event) {
 }
 
 function filteredExpenses() {
-    const { branch, route, category, person, dateFrom, dateTo, query } = appliedFilters;
+    const { month, branch, route, category, person, dateFrom, dateTo, query } = appliedFilters;
+    const hasDateRange = dateFrom || dateTo;
     return state.expenses.filter(expense =>
+        (hasDateRange || !month || expense.date.slice(0, 7) === month) &&
         (!branch || expense.branch === branch) &&
         (!route || expense.route === route) &&
         (!category || expense.category === category) &&
@@ -244,6 +311,8 @@ function syncDateFilters() {
     const dateTo = $("filterDateTo");
     dateTo.min = dateFrom.value;
     dateFrom.max = dateTo.value;
+    if (datePickers.from) datePickers.from.set("maxDate", dateTo.value || null);
+    if (datePickers.to) datePickers.to.set("minDate", dateFrom.value || null);
 }
 
 async function applyExpenseFilters() {
@@ -254,6 +323,7 @@ async function applyExpenseFilters() {
     await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 250)));
 
     appliedFilters = {
+        month: $("filterMonth").value || getCurrentMonth(),
         branch: $("filterBranch").value,
         route: $("filterRoute").value,
         category: $("filterCategory").value,
@@ -262,8 +332,23 @@ async function applyExpenseFilters() {
         dateTo: $("filterDateTo").value,
         query: $("search").value.trim().toLocaleLowerCase("vi")
     };
-    renderTable();
-    setButtonLoading(button, false);
+    try {
+        await loadData();
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
+async function applyMonthFilter() {
+    appliedFilters.month = $("filterMonth").value || getCurrentMonth();
+    clearSecondaryFilters();
+    try {
+        await loadData();
+    } catch (error) {
+        alert(error.message);
+    }
 }
 
 function setButtonLoading(button, loading, loadingText) {
@@ -281,13 +366,24 @@ function setButtonLoading(button, loading, loadingText) {
 }
 
 function clearExpenseFilters() {
+    $("filterMonth").value = getCurrentMonth();
+    if (datePickers.month) datePickers.month.setDate(getCurrentMonth(), false, "Y-m");
+    appliedFilters.month = getCurrentMonth();
+    clearSecondaryFilters();
+    loadData().catch(error => alert(error.message));
+}
+
+function clearSecondaryFilters() {
     ["filterBranch", "filterRoute", "filterCategory", "filterPerson", "filterDateFrom", "filterDateTo", "search"]
         .forEach(id => {
             $(id).value = "";
         });
     $("filterDateFrom").removeAttribute("max");
     $("filterDateTo").removeAttribute("min");
+    if (datePickers.from) datePickers.from.clear();
+    if (datePickers.to) datePickers.to.clear();
     appliedFilters = {
+        month: appliedFilters.month || getCurrentMonth(),
         branch: "",
         route: "",
         category: "",

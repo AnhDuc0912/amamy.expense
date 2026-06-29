@@ -62,10 +62,18 @@ function validPassword(value) {
   return String(value || '') === String(process.env.BUDGET_PASSWORD || '280836');
 }
 
-function summarize(data, month) {
-  var monthlyExpenses = data.expenses.filter(function(expense) {
-    return monthOf(expense.date) === month;
+function filterByPeriod(expense, period) {
+  var hasDateRange = period.dateFrom || period.dateTo;
+  return (hasDateRange || !period.month || monthOf(expense.date) === period.month) &&
+    (!period.dateFrom || expense.date >= period.dateFrom) &&
+    (!period.dateTo || expense.date <= period.dateTo);
+}
+
+function summarize(data, period) {
+  var filteredExpenses = data.expenses.filter(function(expense) {
+    return filterByPeriod(expense, period);
   });
+  var month = period.month;
   var budget = data.budgets[month] || { HN: 0, HCM: 0 };
   var spent = {};
   var reports = { branch: {}, route: {}, category: {}, person: {} };
@@ -74,7 +82,7 @@ function summarize(data, month) {
     spent[branch] = 0;
   });
 
-  monthlyExpenses.forEach(function(expense) {
+  filteredExpenses.forEach(function(expense) {
     spent[expense.branch] = (spent[expense.branch] || 0) + expense.amount;
     reports.branch[expense.branch] = (reports.branch[expense.branch] || 0) + expense.amount;
     reports.route[expense.route] = (reports.route[expense.route] || 0) + expense.amount;
@@ -94,7 +102,7 @@ function summarize(data, month) {
       return total + spent[branch];
     }, 0),
     totalBudget: budget.HN + budget.HCM,
-    missingReceipts: data.expenses.filter(function(expense) {
+    missingReceipts: filteredExpenses.filter(function(expense) {
       return !expense.receipts || expense.receipts.length === 0;
     }).length,
     reports: reports
@@ -133,12 +141,18 @@ function prepareReceipts(receipts) {
 router.get('/bootstrap', async function(req, res, next) {
   try {
     var month = validMonth(req.query.month) ? req.query.month : currentMonth();
+    var dateFrom = validDate(req.query.dateFrom) ? req.query.dateFrom : '';
+    var dateTo = validDate(req.query.dateTo) ? req.query.dateTo : '';
     var data = await store.read();
     res.json({
       options: options,
       expenses: data.expenses.map(publicExpense),
       auditLogs: data.auditLogs || [],
-      summary: summarize(data, month)
+      summary: summarize(data, {
+        month: month,
+        dateFrom: dateFrom,
+        dateTo: dateTo
+      })
     });
   } catch (error) {
     next(error);
@@ -331,11 +345,17 @@ router.delete('/expenses/:id', async function(req, res, next) {
 
 router.get('/expenses.csv', async function(req, res, next) {
   try {
+    var month = validMonth(req.query.month) ? req.query.month : '';
+    var dateFrom = validDate(req.query.dateFrom) ? req.query.dateFrom : '';
+    var dateTo = validDate(req.query.dateTo) ? req.query.dateTo : '';
+    var period = { month: month, dateFrom: dateFrom, dateTo: dateTo };
     var data = await store.read();
     var rows = [
       ['Ngày', 'Chi nhánh', 'Chiều vận chuyển', 'Danh mục', 'Ai chi', 'Số tiền', 'Ghi chú', 'Số chứng từ']
     ];
-    data.expenses.forEach(function(expense) {
+    data.expenses.filter(function(expense) {
+      return filterByPeriod(expense, period);
+    }).forEach(function(expense) {
       rows.push([
         expense.date,
         expense.branch,
@@ -354,7 +374,10 @@ router.get('/expenses.csv', async function(req, res, next) {
     }).join('\n');
 
     res.set('Content-Type', 'text/csv; charset=utf-8');
-    res.set('Content-Disposition', 'attachment; filename="amamy-chi-tieu.csv"');
+    res.set(
+      'Content-Disposition',
+      'attachment; filename="amamy-chi-tieu' + (month ? '-' + month : '') + '.csv"'
+    );
     res.send('\ufeff' + csv);
   } catch (error) {
     next(error);
