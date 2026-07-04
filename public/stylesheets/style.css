@@ -116,6 +116,41 @@ header p,
   margin: 6px 0 0
 }
 
+.cashStats {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line)
+}
+
+.cashStats h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #33415c
+}
+
+.cashRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line)
+}
+
+.cashRow span {
+  font-weight: 900;
+  color: #0566b8
+}
+
+.cashRow b {
+  justify-self: end;
+  color: var(--blue2)
+}
+
+.cashRow small {
+  grid-column: 1 / -1;
+  color: var(--muted)
+}
+
 .topFilters {
   display: grid;
   grid-template-columns: minmax(170px, .8fr) minmax(190px, 1fr) minmax(190px, 1fr) auto;
@@ -228,6 +263,11 @@ header p,
   padding: 20px
 }
 
+.grid + .panel,
+.panel + .panel {
+  margin-bottom: 16px
+}
+
 .large {
   min-width: 0
 }
@@ -244,6 +284,14 @@ header p,
 
 .three {
   grid-template-columns: repeat(3, 1fr)
+}
+
+.one {
+  grid-template-columns: 1fr
+}
+
+.hidden {
+  display: none !important
 }
 
 label {

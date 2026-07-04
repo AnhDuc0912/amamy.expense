@@ -12,6 +12,9 @@ var allowedMimeTypes = [
   'application/pdf'
 ];
 var maxReceiptSize = 5 * 1024 * 1024;
+var codNoInvoiceCategory = 'Phí COD (không thu vào hóa đơn KH)';
+var codWithInvoiceCategory = 'Phí COD (thu hóa đơn KH)';
+var materialRoute = 'Vật liệu';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -53,8 +56,25 @@ function publicExpense(expense) {
     amount: expense.amount,
     date: expense.date,
     note: expense.note,
+    codReason: expense.codReason || '',
+    customerCode: expense.customerCode || '',
     receipts: expense.receipts || [],
     createdAt: expense.createdAt
+  };
+}
+
+function publicPayment(payment) {
+  return {
+    id: payment.id,
+    branch: payment.branch,
+    route: payment.route,
+    receiver: payment.receiver,
+    customerCode: payment.customerCode,
+    amount: payment.amount,
+    date: payment.date,
+    note: payment.note,
+    receipts: payment.receipts || [],
+    createdAt: payment.createdAt
   };
 }
 
@@ -69,25 +89,54 @@ function filterByPeriod(expense, period) {
     (!period.dateTo || expense.date <= period.dateTo);
 }
 
+function validExpenseCategory(route, category) {
+  if (route === materialRoute) {
+    return options.materialCategories.indexOf(category) !== -1;
+  }
+  return options.categories.indexOf(category) !== -1;
+}
+
 function summarize(data, period) {
   var filteredExpenses = data.expenses.filter(function(expense) {
     return filterByPeriod(expense, period);
   });
+  var filteredPayments = (data.payments || []).filter(function(payment) {
+    return filterByPeriod(payment, period);
+  });
   var month = period.month;
   var budget = data.budgets[month] || { HN: 0, HCM: 0 };
   var spent = {};
+  var cashReceived = {};
+  var cashSpent = {};
+  var cashBalance = {};
   var reports = { branch: {}, route: {}, category: {}, person: {} };
 
   options.branches.forEach(function(branch) {
     spent[branch] = 0;
   });
+  ['HN', 'HCM'].forEach(function(branch) {
+    cashReceived[branch] = 0;
+    cashSpent[branch] = 0;
+    cashBalance[branch] = 0;
+  });
 
   filteredExpenses.forEach(function(expense) {
     spent[expense.branch] = (spent[expense.branch] || 0) + expense.amount;
+    if (cashSpent[expense.branch] !== undefined) {
+      cashSpent[expense.branch] += expense.amount;
+    }
     reports.branch[expense.branch] = (reports.branch[expense.branch] || 0) + expense.amount;
     reports.route[expense.route] = (reports.route[expense.route] || 0) + expense.amount;
     reports.category[expense.category] = (reports.category[expense.category] || 0) + expense.amount;
     reports.person[expense.spentBy] = (reports.person[expense.spentBy] || 0) + expense.amount;
+  });
+
+  filteredPayments.forEach(function(payment) {
+    cashReceived[payment.branch] = (cashReceived[payment.branch] || 0) + payment.amount;
+  });
+
+  Object.keys(cashBalance).forEach(function(branch) {
+    cashBalance[branch] = (cashReceived[branch] || 0) - (cashSpent[branch] || 0);
   });
 
   return {
@@ -101,6 +150,20 @@ function summarize(data, period) {
     totalSpent: Object.keys(spent).reduce(function(total, branch) {
       return total + spent[branch];
     }, 0),
+    cash: {
+      received: cashReceived,
+      spent: cashSpent,
+      balance: cashBalance,
+      totalReceived: Object.keys(cashReceived).reduce(function(total, branch) {
+        return total + cashReceived[branch];
+      }, 0),
+      totalSpent: Object.keys(cashSpent).reduce(function(total, branch) {
+        return total + cashSpent[branch];
+      }, 0),
+      totalBalance: Object.keys(cashBalance).reduce(function(total, branch) {
+        return total + cashBalance[branch];
+      }, 0)
+    },
     totalBudget: budget.HN + budget.HCM,
     missingReceipts: filteredExpenses.filter(function(expense) {
       return !expense.receipts || expense.receipts.length === 0;
@@ -147,6 +210,7 @@ router.get('/bootstrap', async function(req, res, next) {
     res.json({
       options: options,
       expenses: data.expenses.map(publicExpense),
+      payments: (data.payments || []).map(publicPayment),
       auditLogs: data.auditLogs || [],
       summary: summarize(data, {
         month: month,
@@ -220,7 +284,7 @@ router.post('/expenses', async function(req, res, next) {
     var amount = parseAmount(body.amount);
     if (options.branches.indexOf(body.branch) === -1) return sendError(res, 400, 'Chi nhánh không hợp lệ');
     if (options.routes.indexOf(body.route) === -1) return sendError(res, 400, 'Chiều vận chuyển không hợp lệ');
-    if (options.categories.indexOf(body.category) === -1) return sendError(res, 400, 'Danh mục không hợp lệ');
+    if (!validExpenseCategory(body.route, body.category)) return sendError(res, 400, 'Danh mục không hợp lệ');
     if (options.people.indexOf(body.spentBy) === -1) return sendError(res, 400, 'Người chi không hợp lệ');
     if (!amount) return sendError(res, 400, 'Số tiền phải là số nguyên lớn hơn 0');
     if (!validDate(body.date)) {
@@ -228,6 +292,17 @@ router.post('/expenses', async function(req, res, next) {
     }
 
     receipts = prepareReceipts(body.receipts);
+    var codReason = cleanText(body.codReason, 1000);
+    var customerCode = cleanText(body.customerCode, 80);
+    if (body.category === codNoInvoiceCategory && !codReason) {
+      return sendError(res, 400, 'Vui lòng ghi lý do vì sao phí COD không tính vào hóa đơn khách hàng');
+    }
+    if (body.category === codWithInvoiceCategory) {
+      if (!customerCode) return sendError(res, 400, 'Vui lòng nhập mã khách hàng');
+      if (!receipts.length) {
+        return sendError(res, 400, 'Vui lòng tải ảnh hoặc file hóa đơn chứng minh đã thu tiền');
+      }
+    }
     var expense = {
       id: crypto.randomBytes(12).toString('hex'),
       branch: body.branch,
@@ -237,12 +312,61 @@ router.post('/expenses', async function(req, res, next) {
       amount: amount,
       date: body.date,
       note: cleanText(body.note, 1000),
+      codReason: body.category === codNoInvoiceCategory ? codReason : '',
+      customerCode: body.category === codWithInvoiceCategory ? customerCode : '',
       receipts: receipts,
       createdAt: new Date().toISOString()
     };
 
     await store.createExpense(expense);
     res.status(201).json({ expense: publicExpense(expense) });
+  } catch (error) {
+    if (error.message && error.message.toLocaleLowerCase('vi').indexOf('chứng từ') !== -1) {
+      return sendError(res, 400, error.message);
+    }
+    next(error);
+  }
+});
+
+router.post('/payments', async function(req, res, next) {
+  var receipts = [];
+  try {
+    var body = req.body || {};
+    var amount = parseAmount(body.amount);
+    var receiver = cleanText(body.receiver, 120);
+    var customerCode = cleanText(body.customerCode, 80);
+
+    if (['HN', 'HCM'].indexOf(body.branch) === -1) {
+      return sendError(res, 400, 'Cửa hàng không hợp lệ');
+    }
+    if (options.routes.indexOf(body.route) === -1) {
+      return sendError(res, 400, 'Chiều vận chuyển không hợp lệ');
+    }
+    if (!receiver) return sendError(res, 400, 'Vui lòng nhập người nhận tiền');
+    if (!customerCode) return sendError(res, 400, 'Vui lòng nhập mã khách hàng');
+    if (!amount) return sendError(res, 400, 'Số tiền phải là số nguyên lớn hơn 0');
+    if (!validDate(body.date)) return sendError(res, 400, 'Ngày thanh toán không hợp lệ');
+
+    receipts = prepareReceipts(body.receipts);
+    if (!receipts.length) {
+      return sendError(res, 400, 'Vui lòng tải lên ít nhất một ảnh hoặc file hóa đơn');
+    }
+
+    var payment = {
+      id: crypto.randomBytes(12).toString('hex'),
+      branch: body.branch,
+      route: body.route,
+      receiver: receiver,
+      customerCode: customerCode,
+      amount: amount,
+      date: body.date,
+      note: cleanText(body.note, 1000),
+      receipts: receipts,
+      createdAt: new Date().toISOString()
+    };
+
+    await store.createPayment(payment);
+    res.status(201).json({ payment: publicPayment(payment) });
   } catch (error) {
     if (error.message && error.message.toLocaleLowerCase('vi').indexOf('chứng từ') !== -1) {
       return sendError(res, 400, error.message);
@@ -351,7 +475,18 @@ router.get('/expenses.csv', async function(req, res, next) {
     var period = { month: month, dateFrom: dateFrom, dateTo: dateTo };
     var data = await store.read();
     var rows = [
-      ['Ngày', 'Chi nhánh', 'Chiều vận chuyển', 'Danh mục', 'Ai chi', 'Số tiền', 'Ghi chú', 'Số chứng từ']
+      [
+        'Ngày',
+        'Chi nhánh',
+        'Chiều vận chuyển',
+        'Danh mục',
+        'Ai chi',
+        'Số tiền',
+        'Mã khách hàng',
+        'Lý do COD không thu',
+        'Ghi chú',
+        'Số chứng từ'
+      ]
     ];
     data.expenses.filter(function(expense) {
       return filterByPeriod(expense, period);
@@ -363,6 +498,8 @@ router.get('/expenses.csv', async function(req, res, next) {
         expense.category,
         expense.spentBy,
         expense.amount,
+        expense.customerCode || '',
+        expense.codReason || '',
         expense.note,
         (expense.receipts || []).length
       ]);

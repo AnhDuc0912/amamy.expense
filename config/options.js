@@ -1,26 +1,34 @@
 module.exports = {
   branches: ['HN', 'HCM', 'Công ty chi trả'],
   routes: [
-    'Việt Nhật',
-    'Nhật Việt',
-    'Mỹ Việt',
     'Việt Mỹ',
     'Việt Úc',
     'Việt Canada',
-    'Việt Đức',
     'Việt Pháp',
-    'Việt Châu Âu',
+    'Việt Nhật',
     'Việt Séc',
+    'Việt Đức',
+    'Việt Châu Âu',
+    'Việt Đông Lạnh',
+    'Nhật Việt',
     'Đức Việt',
+    'Mỹ Việt',
     'Hàng đông lạnh',
     'Vật liệu'
   ],
   categories: [
     'Phí ship đối tác',
-    'Phí COD',
-    'Phí vật liệu',
-    'Phí Shopee',
+    'Phí COD (không thu vào hóa đơn KH)',
+    'Phí COD (thu hóa đơn KH)',
     'Phí khác'
   ],
-  people: ['Công Thức Lê', 'Trung Cao', 'Kế toán', 'Lan Anh', 'Duy', 'Vân', 'Tài khoản công ty']
+  materialCategories: [
+    'Chi phí carton',
+    'Chi phí băng keo',
+    'Chi phí màng co',
+    'Chi phí chống sốc',
+    'Chi phí khác'
+  ],
+  people: ['Công Thức Lê', 'Trung Cao', 'Kế toán', 'Lan Anh', 'Duy', 'Vân', 'Tài khoản công ty'],
+  paymentReceivers: ['Trung Cao', 'Công Thức Lê', 'Người khác']
 };

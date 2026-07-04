@@ -59,6 +59,216 @@ test('bootstrap exposes company payer options', async function() {
   var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06');
   assert.ok(bootstrap.body.options.branches.includes('Công ty chi trả'));
   assert.ok(bootstrap.body.options.people.includes('Tài khoản công ty'));
+  assert.ok(bootstrap.body.options.paymentReceivers.includes('Trung Cao'));
+  assert.ok(bootstrap.body.options.categories.includes('Phí COD (không thu vào hóa đơn KH)'));
+  assert.ok(bootstrap.body.options.categories.includes('Phí COD (thu hóa đơn KH)'));
+  assert.equal(bootstrap.body.options.categories.includes('Phí Shopee'), false);
+  assert.deepEqual(bootstrap.body.options.materialCategories, [
+    'Chi phí carton',
+    'Chi phí băng keo',
+    'Chi phí màng co',
+    'Chi phí chống sốc',
+    'Chi phí khác'
+  ]);
+});
+
+test('store payment requires receipt and updates cash summary', async function() {
+  var missingReceipt = await jsonRequest('/api/payments', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Mỹ',
+      receiver: 'Trung Cao',
+      customerCode: 'KH001',
+      amount: 5000000,
+      date: '2026-06-24'
+    })
+  });
+  assert.equal(missingReceipt.response.status, 400);
+
+  var receiptContent = Buffer.from('payment-receipt');
+  var payment = await jsonRequest('/api/payments', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Mỹ',
+      receiver: 'Nguyễn A',
+      customerCode: 'KH001',
+      amount: 5000000,
+      date: '2026-06-24',
+      note: 'Khách nạp tiền mặt',
+      receipts: [{
+        name: 'hoa-don.pdf',
+        type: 'application/pdf',
+        data: 'data:application/pdf;base64,' + receiptContent.toString('base64')
+      }]
+    })
+  });
+  assert.equal(payment.response.status, 201);
+  assert.equal(payment.body.payment.receipts.length, 1);
+
+  var expense = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Mỹ',
+      category: 'Phí khác',
+      spentBy: 'Kế toán',
+      amount: 3000000,
+      date: '2026-06-25'
+    })
+  });
+  assert.equal(expense.response.status, 201);
+
+  var bootstrap = await jsonRequest('/api/bootstrap?month=2026-06');
+  var savedPayment = bootstrap.body.payments.find(function(item) {
+    return item.id === payment.body.payment.id;
+  });
+  assert.equal(savedPayment.customerCode, 'KH001');
+  assert.equal(bootstrap.body.summary.cash.received.HN, 5000000);
+  assert.equal(bootstrap.body.summary.cash.spent.HN, 3000000);
+  assert.equal(bootstrap.body.summary.cash.balance.HN, 2000000);
+  assert.equal(bootstrap.body.summary.cash.totalBalance, 2000000);
+
+  await fetch(baseUrl + '/api/expenses/' + expense.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+});
+
+test('COD expense categories enforce reason or customer invoice proof', async function() {
+  var withoutReason = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Mỹ',
+      category: 'Phí COD (không thu vào hóa đơn KH)',
+      spentBy: 'Kế toán',
+      amount: 40000,
+      date: '2026-06-26'
+    })
+  });
+  assert.equal(withoutReason.response.status, 400);
+
+  var noInvoiceCod = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Mỹ',
+      category: 'Phí COD (không thu vào hóa đơn KH)',
+      spentBy: 'Kế toán',
+      amount: 40000,
+      date: '2026-06-26',
+      codReason: 'Khách không bị thu khoản COD này'
+    })
+  });
+  assert.equal(noInvoiceCod.response.status, 201);
+  assert.equal(noInvoiceCod.body.expense.codReason, 'Khách không bị thu khoản COD này');
+
+  var withoutProof = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HCM',
+      route: 'Việt Mỹ',
+      category: 'Phí COD (thu hóa đơn KH)',
+      spentBy: 'Kế toán',
+      amount: 50000,
+      date: '2026-06-26',
+      customerCode: 'KH-COD'
+    })
+  });
+  assert.equal(withoutProof.response.status, 400);
+
+  var withInvoiceCod = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HCM',
+      route: 'Việt Mỹ',
+      category: 'Phí COD (thu hóa đơn KH)',
+      spentBy: 'Kế toán',
+      amount: 50000,
+      date: '2026-06-26',
+      customerCode: 'KH-COD',
+      receipts: [{
+        name: 'cod-invoice.png',
+        type: 'image/png',
+        data: 'data:image/png;base64,' + Buffer.from('cod-invoice').toString('base64')
+      }]
+    })
+  });
+  assert.equal(withInvoiceCod.response.status, 201);
+  assert.equal(withInvoiceCod.body.expense.customerCode, 'KH-COD');
+  assert.equal(withInvoiceCod.body.expense.receipts.length, 1);
+
+  await fetch(baseUrl + '/api/expenses/' + noInvoiceCod.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+  await fetch(baseUrl + '/api/expenses/' + withInvoiceCod.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+});
+
+test('material route only accepts material expense categories', async function() {
+  var regularCategory = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Vật liệu',
+      category: 'Phí khác',
+      spentBy: 'Kế toán',
+      amount: 60000,
+      date: '2026-06-27'
+    })
+  });
+  assert.equal(regularCategory.response.status, 400);
+
+  var materialCategory = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Vật liệu',
+      category: 'Chi phí carton',
+      spentBy: 'Kế toán',
+      amount: 60000,
+      date: '2026-06-27'
+    })
+  });
+  assert.equal(materialCategory.response.status, 201);
+  assert.equal(materialCategory.body.expense.category, 'Chi phí carton');
+
+  var materialOnRegularRoute = await jsonRequest('/api/expenses', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      branch: 'HN',
+      route: 'Việt Mỹ',
+      category: 'Chi phí carton',
+      spentBy: 'Kế toán',
+      amount: 60000,
+      date: '2026-06-27'
+    })
+  });
+  assert.equal(materialOnRegularRoute.response.status, 400);
+
+  await fetch(baseUrl + '/api/expenses/' + materialCategory.body.expense.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
 });
 
 test('expense lifecycle updates summary and removes receipt file', async function() {
@@ -69,7 +279,7 @@ test('expense lifecycle updates summary and removes receipt file', async functio
     body: JSON.stringify({
       branch: 'HN',
       route: 'Việt Nhật',
-      category: 'Phí COD',
+      category: 'Phí khác',
       spentBy: 'Kế toán',
       amount: 45000,
       date: '2026-02-31'
@@ -83,7 +293,7 @@ test('expense lifecycle updates summary and removes receipt file', async functio
     body: JSON.stringify({
       branch: 'HN',
       route: 'Việt Nhật',
-      category: 'Phí COD',
+      category: 'Phí khác',
       spentBy: 'Kế toán',
       amount: 45000,
       date: '2026-06-21',
@@ -169,7 +379,7 @@ test('amount updates require password and are written to audit history', async f
     body: JSON.stringify({
       branch: 'HCM',
       route: 'Việt Đức',
-      category: 'Phí COD',
+      category: 'Phí khác',
       spentBy: 'Trung Cao',
       amount: 85000,
       date: '2026-06-23'
@@ -260,7 +470,7 @@ test('bootstrap and CSV respect date range filters', async function() {
     body: JSON.stringify({
       branch: 'HN',
       route: 'Việt Nhật',
-      category: 'Phí COD',
+      category: 'Phí khác',
       spentBy: 'Kế toán',
       amount: 11000,
       date: '2026-06-05',
@@ -275,7 +485,7 @@ test('bootstrap and CSV respect date range filters', async function() {
     body: JSON.stringify({
       branch: 'HN',
       route: 'Việt Nhật',
-      category: 'Phí COD',
+      category: 'Phí khác',
       spentBy: 'Kế toán',
       amount: 22000,
       date: '2026-06-15',

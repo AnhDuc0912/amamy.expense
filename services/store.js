@@ -34,8 +34,15 @@ async function initialize() {
       database.collection('expenses').createIndex({ route: 1 }),
       database.collection('expenses').createIndex({ category: 1 }),
       database.collection('expenses').createIndex({ spentBy: 1 }),
+      database.collection('payments').createIndex({ id: 1 }, { unique: true }),
+      database.collection('payments').createIndex({ date: -1, createdAt: -1 }),
+      database.collection('payments').createIndex({ branch: 1, date: -1 }),
+      database.collection('payments').createIndex({ route: 1 }),
+      database.collection('payments').createIndex({ receiver: 1 }),
+      database.collection('payments').createIndex({ customerCode: 1 }),
       database.collection('receipts').createIndex({ id: 1 }, { unique: true }),
       database.collection('receipts').createIndex({ expenseId: 1 }),
+      database.collection('receipts').createIndex({ paymentId: 1 }),
       database.collection('auditLogs').createIndex({ id: 1 }, { unique: true }),
       database.collection('auditLogs').createIndex({ createdAt: -1 })
     ]);
@@ -57,6 +64,25 @@ function publicExpense(document) {
     route: document.route,
     category: document.category,
     spentBy: document.spentBy,
+    amount: Number(document.amount),
+    date: document.date,
+    note: document.note || '',
+    codReason: document.codReason || '',
+    customerCode: document.customerCode || '',
+    receipts: document.receipts || [],
+    createdAt: document.createdAt instanceof Date
+      ? document.createdAt.toISOString()
+      : document.createdAt
+  };
+}
+
+function publicPayment(document) {
+  return {
+    id: document.id,
+    branch: document.branch,
+    route: document.route,
+    receiver: document.receiver,
+    customerCode: document.customerCode,
     amount: Number(document.amount),
     date: document.date,
     note: document.note || '',
@@ -88,6 +114,10 @@ async function read() {
       .find({}, { projection: { _id: 0 } })
       .sort({ date: -1, createdAt: -1 })
       .toArray(),
+    database.collection('payments')
+      .find({}, { projection: { _id: 0 } })
+      .sort({ date: -1, createdAt: -1 })
+      .toArray(),
     database.collection('budgets')
       .find({}, { projection: { _id: 0 } })
       .toArray(),
@@ -99,7 +129,7 @@ async function read() {
   ]);
 
   var budgets = {};
-  results[1].forEach(function(budget) {
+  results[2].forEach(function(budget) {
     budgets[budget.month] = {
       HN: Number(budget.HN),
       HCM: Number(budget.HCM)
@@ -109,7 +139,8 @@ async function read() {
   return {
     budgets: budgets,
     expenses: results[0].map(publicExpense),
-    auditLogs: results[2].map(publicAuditLog)
+    payments: results[1].map(publicPayment),
+    auditLogs: results[3].map(publicAuditLog)
   };
 }
 
@@ -162,6 +193,8 @@ async function createExpense(expense) {
       amount: expense.amount,
       date: expense.date,
       note: expense.note,
+      codReason: expense.codReason || '',
+      customerCode: expense.customerCode || '',
       receipts: receiptMetadata,
       createdAt: new Date(expense.createdAt)
     });
@@ -171,6 +204,51 @@ async function createExpense(expense) {
     if (receiptDocuments.length) {
       await database.collection('receipts').deleteMany({ expenseId: expense.id }).catch(function() {});
     }
+    throw error;
+  }
+}
+
+async function createPayment(payment) {
+  await initialize();
+  var receiptDocuments = payment.receipts.map(function(receipt) {
+    return {
+      id: receipt.id,
+      paymentId: payment.id,
+      name: receipt.name,
+      type: receipt.type,
+      size: receipt.size,
+      data: receipt.data,
+      createdAt: new Date()
+    };
+  });
+  var receiptMetadata = payment.receipts.map(function(receipt) {
+    return {
+      id: receipt.id,
+      name: receipt.name,
+      type: receipt.type,
+      size: receipt.size,
+      url: '/api/receipts/' + receipt.id
+    };
+  });
+
+  try {
+    await database.collection('receipts').insertMany(receiptDocuments);
+    await database.collection('payments').insertOne({
+      id: payment.id,
+      branch: payment.branch,
+      route: payment.route,
+      receiver: payment.receiver,
+      customerCode: payment.customerCode,
+      amount: payment.amount,
+      date: payment.date,
+      note: payment.note,
+      receipts: receiptMetadata,
+      createdAt: new Date(payment.createdAt)
+    });
+    payment.receipts = receiptMetadata;
+    return payment;
+  } catch (error) {
+    await database.collection('receipts').deleteMany({ paymentId: payment.id }).catch(function() {});
     throw error;
   }
 }
@@ -351,6 +429,7 @@ module.exports = {
   read: read,
   setBudget: setBudget,
   createExpense: createExpense,
+  createPayment: createPayment,
   addReceipts: addReceipts,
   deleteReceipt: deleteReceipt,
   deleteExpense: deleteExpense,

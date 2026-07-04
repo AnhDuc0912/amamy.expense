@@ -5,6 +5,7 @@
     <nav>
       <a href="#dashboard" class="active">Dashboard</a>
       <a href="#addExpense">Thêm khoản chi</a>
+      <a href="#storePayment">Thanh toán cửa hàng</a>
       <a href="#expenseList">Danh sách</a>
       <a href="#reports">Báo cáo</a>
     </nav>
@@ -50,6 +51,8 @@
       </div>
       <div class="card"><span>Tổng chi tháng này</span><strong id="monthSpent">0 đ</strong><small id="totalBudget">Ngân
           sách: 0 đ</small></div>
+      <div class="card"><span>Tiền mặt cửa hàng dư</span><strong id="cashBalanceTotal">0 đ</strong><small
+          id="cashReceivedTotal">Đã nhận: 0 đ</small></div>
       <div class="card warning"><span>Khoản thiếu ảnh</span><strong id="missingImages">0</strong><small>Cần bổ sung
           chứng từ</small></div>
     </section>
@@ -63,6 +66,10 @@
         </div>
         <button id="saveBudgetBtn">Lưu quỹ</button>
         <p class="hint">Cần mật khẩu để điều chỉnh ngân sách.</p>
+        <div class="cashStats">
+          <h3>Tiền mặt cửa hàng</h3>
+          <div id="cashStatRows"></div>
+        </div>
       </div>
 
       <div id="addExpense" class="panel large">
@@ -84,6 +91,16 @@
             <label>Ai chi tiêu *<select id="spentBy" required></select></label>
             <label>Ngày chi *<input id="date" type="date" required /></label>
           </div>
+          <div id="codNoInvoiceWrap" class="row one hidden">
+            <label>Lý do không tính vào hóa đơn KH *
+              <textarea id="codReason" placeholder="VD: Phí COD nội bộ, khách không bị thu khoản này"></textarea>
+            </label>
+          </div>
+          <div id="codInvoiceWrap" class="row one hidden">
+            <label>Mã khách hàng *
+              <input id="expenseCustomerCode" placeholder="VD: KH001" />
+            </label>
+          </div>
           <label>Ghi chú<textarea id="note" placeholder="VD: Viettel lấy hàng Nhật Việt"></textarea></label>
 
           <div class="upload" id="dropZone">
@@ -97,6 +114,48 @@
               chi</button></div>
         </form>
       </div>
+    </section>
+
+    <section id="storePayment" class="panel">
+      <h2>Thanh toán tại cửa hàng</h2>
+      <form id="paymentForm">
+        <div class="row three">
+          <label>Cửa hàng *
+            <select id="paymentBranch" required>
+              <option value="">-- Chọn cửa hàng --</option>
+              <option>HN</option>
+              <option>HCM</option>
+            </select>
+          </label>
+          <label>Chiều vận chuyển *
+            <select id="paymentRoute" required></select>
+          </label>
+          <label>Người nhận tiền *
+            <select id="paymentReceiver" required></select>
+          </label>
+        </div>
+        <div id="otherReceiverWrap" class="row one hidden">
+          <label>Tên người nhận khác *
+            <input id="otherReceiver" placeholder="Nhập tên người nhận tiền" />
+          </label>
+        </div>
+        <div class="row three">
+          <label>Mã khách hàng *<input id="customerCode" placeholder="VD: KH001" required /></label>
+          <label>Số tiền (VND) *<input id="paymentAmount" inputmode="numeric" placeholder="VD: 5000000" required /></label>
+          <label>Ngày thanh toán *<input id="paymentDate" type="date" required /></label>
+        </div>
+        <label>Ghi chú<textarea id="paymentNote" placeholder="VD: Khách thanh toán tiền mặt tại cửa hàng"></textarea></label>
+
+        <div class="upload" id="paymentDropZone">
+          <input id="paymentReceipts" type="file" accept="image/*,.pdf" multiple hidden />
+          <div class="uploadIcon">＋</div>
+          <b>Kéo thả ảnh hoặc hóa đơn vào đây</b>
+          <span>buộc phải có ít nhất 1 file, tối đa 2 file</span>
+        </div>
+        <div id="paymentPreview" class="preview"></div>
+        <div class="actions"><button type="reset" class="secondary">Xóa trắng</button><button type="submit">Lưu thanh
+            toán</button></div>
+      </form>
     </section>
 
     <section id="expenseList" class="panel tablePanel">
@@ -142,6 +201,32 @@
         </table>
       </div>
       <input id="receiptUpdateInput" type="file" accept="image/*,.pdf" multiple hidden />
+    </section>
+
+    <section id="paymentList" class="panel tablePanel">
+      <div class="tableHeader compact">
+        <div class="tableTitle">
+          <h2>Bảng nạp tiền cửa hàng</h2>
+          <span id="paymentCount" class="resultCount"></span>
+        </div>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>Cửa hàng</th>
+              <th>Chiều</th>
+              <th>Người nhận</th>
+              <th>Mã khách</th>
+              <th>Số tiền</th>
+              <th>Ghi chú</th>
+              <th>Hóa đơn/ảnh</th>
+            </tr>
+          </thead>
+          <tbody id="paymentRows"></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel tablePanel">

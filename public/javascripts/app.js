@@ -1,10 +1,12 @@
 let state = {
-    options: { branches: [], routes: [], categories: [], people: [] },
+    options: { branches: [], routes: [], categories: [], materialCategories: [], people: [] },
     expenses: [],
+    payments: [],
     auditLogs: [],
     summary: null
 };
 let selectedFiles = [];
+let paymentSelectedFiles = [];
 let optionsInitialized = false;
 let receiptUpdateExpenseId = null;
 let receiptUpdateButton = null;
@@ -23,6 +25,9 @@ let appliedFilters = {
 const $ = id => document.getElementById(id);
 const fmt = n => (Number(n) || 0).toLocaleString("vi-VN") + " đ";
 const valNum = v => Number(String(v || "").replace(/[^0-9]/g, "")) || 0;
+const COD_NO_INVOICE = "Phí COD (không thu vào hóa đơn KH)";
+const COD_WITH_INVOICE = "Phí COD (thu hóa đơn KH)";
+const MATERIAL_ROUTE = "Vật liệu";
 const escapeHtml = value => String(value == null ? "" : value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -64,12 +69,32 @@ async function loadData() {
 function populateOptions() {
     optionize($("branch"), state.options.branches, "");
     optionize($("route"), state.options.routes, "-- Chọn chiều vận chuyển --");
-    optionize($("category"), state.options.categories, "-- Chọn danh mục --");
+    updateCategoryOptions();
     optionize($("spentBy"), state.options.people, "-- Chọn người chi --");
+    optionize($("paymentRoute"), state.options.routes, "-- Chọn chiều vận chuyển --");
+    optionize($("paymentReceiver"), state.options.paymentReceivers || [], "-- Chọn người nhận --");
     optionize($("filterBranch"), state.options.branches, "Tất cả chi nhánh");
     optionize($("filterRoute"), state.options.routes, "Tất cả chiều");
-    optionize($("filterCategory"), state.options.categories, "Tất cả danh mục");
+    optionize($("filterCategory"), allExpenseCategories(), "Tất cả danh mục");
     optionize($("filterPerson"), state.options.people, "Tất cả người chi");
+}
+
+function allExpenseCategories() {
+    return [...(state.options.categories || []), ...(state.options.materialCategories || [])];
+}
+
+function categoriesForRoute(route) {
+    return route === MATERIAL_ROUTE
+        ? (state.options.materialCategories || [])
+        : (state.options.categories || []);
+}
+
+function updateCategoryOptions() {
+    const categorySelect = $("category");
+    const current = categorySelect.value;
+    const categories = categoriesForRoute($("route").value);
+    optionize(categorySelect, categories, "-- Chọn danh mục --");
+    if (categories.includes(current)) categorySelect.value = current;
 }
 
 async function init() {
@@ -87,10 +112,26 @@ async function init() {
     });
     $("saveBudgetBtn").onclick = saveBudget;
     $("expenseForm").onsubmit = addExpense;
+    $("paymentForm").onsubmit = addPayment;
+    $("route").onchange = () => {
+        updateCategoryOptions();
+        toggleCodFields();
+    };
+    $("category").onchange = toggleCodFields;
     $("expenseForm").onreset = () => setTimeout(() => {
         selectedFiles = [];
         $("date").valueAsDate = new Date();
+        updateCategoryOptions();
+        toggleCodFields();
         renderPreview();
+    }, 0);
+    $("paymentDate").valueAsDate = new Date();
+    $("paymentReceiver").onchange = toggleOtherReceiver;
+    $("paymentForm").onreset = () => setTimeout(() => {
+        paymentSelectedFiles = [];
+        $("paymentDate").valueAsDate = new Date();
+        toggleOtherReceiver();
+        renderPaymentPreview();
     }, 0);
     $("exportBtn").onclick = () => {
         window.location.href = `/api/expenses.csv?${filterQueryString()}`;
@@ -98,6 +139,7 @@ async function init() {
     $("expenseRows").addEventListener("click", handleTableClick);
     $("receiptUpdateInput").addEventListener("change", uploadAdditionalReceipts);
     setupUpload();
+    setupPaymentUpload();
 
     try {
         await loadData();
@@ -205,6 +247,22 @@ function setupUpload() {
     dropZone.addEventListener("drop", event => addFiles([...event.dataTransfer.files]));
 }
 
+function setupPaymentUpload() {
+    const dropZone = $("paymentDropZone");
+    const input = $("paymentReceipts");
+    dropZone.onclick = () => input.click();
+    input.onchange = event => addPaymentFiles([...event.target.files]);
+    ["dragenter", "dragover"].forEach(name => dropZone.addEventListener(name, event => {
+        event.preventDefault();
+        dropZone.classList.add("drag");
+    }));
+    ["dragleave", "drop"].forEach(name => dropZone.addEventListener(name, event => {
+        event.preventDefault();
+        dropZone.classList.remove("drag");
+    }));
+    dropZone.addEventListener("drop", event => addPaymentFiles([...event.dataTransfer.files]));
+}
+
 function addFiles(files) {
     const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
     const validFiles = files.filter(file => allowedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024);
@@ -214,6 +272,17 @@ function addFiles(files) {
     }
     selectedFiles = [...selectedFiles, ...validFiles].slice(0, 2);
     renderPreview();
+}
+
+function addPaymentFiles(files) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"];
+    const validFiles = files.filter(file => allowedTypes.includes(file.type) && file.size <= 5 * 1024 * 1024);
+
+    if (validFiles.length !== files.length) {
+        alert("Chỉ nhận ảnh JPG, PNG, GIF, WEBP hoặc PDF, tối đa 5 MB mỗi file.");
+    }
+    paymentSelectedFiles = [...paymentSelectedFiles, ...validFiles].slice(0, 2);
+    renderPaymentPreview();
 }
 
 function renderPreview() {
@@ -247,6 +316,43 @@ function renderPreview() {
     });
 }
 
+function renderPaymentPreview() {
+    renderFilePreview("paymentPreview", paymentSelectedFiles, index => {
+        paymentSelectedFiles.splice(index, 1);
+        renderPaymentPreview();
+    });
+}
+
+function renderFilePreview(targetId, files, onRemove) {
+    const preview = $(targetId);
+    preview.innerHTML = "";
+    files.forEach((file, index) => {
+        const item = document.createElement("div");
+        item.className = "thumb";
+        if (file.type.startsWith("image/")) {
+            const image = document.createElement("img");
+            image.src = URL.createObjectURL(file);
+            image.onload = () => URL.revokeObjectURL(image.src);
+            item.appendChild(image);
+        } else {
+            item.insertAdjacentHTML("beforeend", "<div>PDF</div>");
+        }
+        item.insertAdjacentHTML(
+            "beforeend",
+            `<span>${escapeHtml(file.name)}<br><small>${(file.size / 1024 / 1024).toFixed(1)} MB</small></span>`
+        );
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.textContent = "×";
+        removeButton.onclick = event => {
+            event.stopPropagation();
+            onRemove(index);
+        };
+        item.appendChild(removeButton);
+        preview.appendChild(item);
+    });
+}
+
 function fileToDataURL(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -260,6 +366,17 @@ async function addExpense(event) {
     event.preventDefault();
     if (!$("branch").value || !$("route").value || !$("category").value || !$("spentBy").value) {
         return alert("Vui lòng chọn đủ chi nhánh, chiều, danh mục và người chi");
+    }
+    if ($("category").value === COD_NO_INVOICE && !$("codReason").value.trim()) {
+        return alert("Vui lòng ghi lý do vì sao phí COD không tính vào hóa đơn khách hàng");
+    }
+    if ($("category").value === COD_WITH_INVOICE) {
+        if (!$("expenseCustomerCode").value.trim()) {
+            return alert("Vui lòng nhập mã khách hàng cho phí COD đã thu hóa đơn");
+        }
+        if (!selectedFiles.length) {
+            return alert("Vui lòng tải ảnh hoặc file hóa đơn chứng minh đã thu tiền");
+        }
     }
 
     const submitButton = event.submitter;
@@ -277,12 +394,77 @@ async function addExpense(event) {
                 amount: valNum($("amount").value),
                 date: $("date").value,
                 note: $("note").value.trim(),
+                codReason: $("codReason").value.trim(),
+                customerCode: $("expenseCustomerCode").value.trim(),
                 receipts
             })
         });
         event.target.reset();
         selectedFiles = [];
         renderPreview();
+        await loadData();
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
+}
+
+function toggleCodFields() {
+    const category = $("category").value;
+    const needsReason = category === COD_NO_INVOICE;
+    const needsInvoice = category === COD_WITH_INVOICE;
+
+    $("codNoInvoiceWrap").classList.toggle("hidden", !needsReason);
+    $("codInvoiceWrap").classList.toggle("hidden", !needsInvoice);
+    $("codReason").required = needsReason;
+    $("expenseCustomerCode").required = needsInvoice;
+
+    if (!needsReason) $("codReason").value = "";
+    if (!needsInvoice) $("expenseCustomerCode").value = "";
+}
+
+function toggleOtherReceiver() {
+    const isOther = $("paymentReceiver").value === "Người khác";
+    $("otherReceiverWrap").classList.toggle("hidden", !isOther);
+    $("otherReceiver").required = isOther;
+    if (!isOther) $("otherReceiver").value = "";
+}
+
+async function addPayment(event) {
+    event.preventDefault();
+    const receiver = $("paymentReceiver").value === "Người khác"
+        ? $("otherReceiver").value.trim()
+        : $("paymentReceiver").value;
+
+    if (!$("paymentBranch").value || !$("paymentRoute").value || !receiver) {
+        return alert("Vui lòng chọn đủ cửa hàng, chiều vận chuyển và người nhận tiền");
+    }
+    if (!paymentSelectedFiles.length) {
+        return alert("Vui lòng tải lên ít nhất một ảnh hoặc file hóa đơn");
+    }
+
+    const submitButton = event.submitter;
+    if (submitButton) submitButton.disabled = true;
+    try {
+        const receipts = await Promise.all(paymentSelectedFiles.map(fileToDataURL));
+        await request("/api/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                branch: $("paymentBranch").value,
+                route: $("paymentRoute").value,
+                receiver,
+                customerCode: $("customerCode").value.trim(),
+                amount: valNum($("paymentAmount").value),
+                date: $("paymentDate").value,
+                note: $("paymentNote").value.trim(),
+                receipts
+            })
+        });
+        event.target.reset();
+        paymentSelectedFiles = [];
+        renderPaymentPreview();
         await loadData();
     } catch (error) {
         alert(error.message);
@@ -302,7 +484,26 @@ function filteredExpenses() {
         (!person || expense.spentBy === person) &&
         (!dateFrom || expense.date >= dateFrom) &&
         (!dateTo || expense.date <= dateTo) &&
-        (!query || (expense.note || "").toLocaleLowerCase("vi").includes(query))
+        (!query || [expense.note, expense.customerCode, expense.codReason]
+            .join(" ")
+            .toLocaleLowerCase("vi")
+            .includes(query))
+    );
+}
+
+function filteredPayments() {
+    const { month, branch, route, dateFrom, dateTo, query } = appliedFilters;
+    const hasDateRange = dateFrom || dateTo;
+    return (state.payments || []).filter(payment =>
+        (hasDateRange || !month || payment.date.slice(0, 7) === month) &&
+        (!branch || payment.branch === branch) &&
+        (!route || payment.route === route) &&
+        (!dateFrom || payment.date >= dateFrom) &&
+        (!dateTo || payment.date <= dateTo) &&
+        (!query || [payment.note, payment.customerCode, payment.receiver]
+            .join(" ")
+            .toLocaleLowerCase("vi")
+            .includes(query))
     );
 }
 
@@ -409,9 +610,24 @@ function render() {
     $("monthSpent").textContent = fmt(summary.totalSpent);
     $("totalBudget").textContent = "Ngân sách: " + fmt(summary.totalBudget);
     $("missingImages").textContent = summary.missingReceipts;
+    $("cashBalanceTotal").textContent = fmt(summary.cash.totalBalance);
+    $("cashReceivedTotal").textContent = "Đã nhận: " + fmt(summary.cash.totalReceived);
+    renderCashStats();
     renderTable();
+    renderPaymentTable();
     renderAuditLogs();
     renderReports();
+}
+
+function renderCashStats() {
+    const cash = state.summary.cash || { received: {}, spent: {}, balance: {} };
+    $("cashStatRows").innerHTML = ["HN", "HCM"].map(branch => `
+        <div class="cashRow">
+            <span>${escapeHtml(branch)}</span>
+            <b>${fmt(cash.balance[branch])}</b>
+            <small>Nhận ${fmt(cash.received[branch])} · Chi ${fmt(cash.spent[branch])}</small>
+        </div>
+    `).join("");
 }
 
 function renderTable() {
@@ -448,9 +664,44 @@ function renderTable() {
                     Sửa tiền
                 </button>
             </td>
-            <td>${escapeHtml(expense.note)}</td>
+            <td>${renderExpenseNote(expense)}</td>
             <td><div class="imgBtns">${receipts}${addReceiptButton}</div></td>
             <td><button class="delete" data-delete-id="${escapeHtml(expense.id)}">Xóa</button></td>
+        </tr>`;
+    }).join("");
+}
+
+function renderExpenseNote(expense) {
+    const details = [];
+    if (expense.customerCode) details.push(`Mã KH: ${expense.customerCode}`);
+    if (expense.codReason) details.push(`Lý do COD: ${expense.codReason}`);
+    if (expense.note) details.push(expense.note);
+    return details.map(escapeHtml).join("<br>");
+}
+
+function renderPaymentTable() {
+    const rows = $("paymentRows");
+    const payments = filteredPayments();
+    $("paymentCount").textContent = `${payments.length} khoản nạp tiền`;
+    if (!payments.length) {
+        rows.innerHTML = '<tr><td colspan="8">Chưa có khoản nạp tiền</td></tr>';
+        return;
+    }
+
+    rows.innerHTML = payments.map(payment => {
+        const receipts = (payment.receipts || []).map((receipt, index) =>
+            `<a class="receiptLink" href="${escapeHtml(receipt.url)}" target="_blank" rel="noopener">` +
+            `${receipt.type.startsWith("image/") ? "Ảnh" : "PDF"} ${index + 1}</a>`
+        ).join("");
+        return `<tr>
+            <td>${escapeHtml(payment.date)}</td>
+            <td><span class="badge">${escapeHtml(payment.branch)}</span></td>
+            <td>${escapeHtml(payment.route)}</td>
+            <td>${escapeHtml(payment.receiver)}</td>
+            <td>${escapeHtml(payment.customerCode)}</td>
+            <td class="money">${fmt(payment.amount)}</td>
+            <td>${escapeHtml(payment.note)}</td>
+            <td><div class="imgBtns">${receipts}</div></td>
         </tr>`;
     }).join("");
 }
