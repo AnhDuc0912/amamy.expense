@@ -4,19 +4,68 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Amamy - Quản lý chi tiêu</title>
+  <title>{{#if title}}{{title}}{{else}}Amamy - Quản lý chi tiêu{{/if}}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css" />
   <link rel='stylesheet' href='/stylesheets/style.css' />
 </head>
 
 <body>
-  {{{body}}}
+  <div class="app">
+    <button id="sidebarToggle" class="sidebarToggle" type="button" aria-label="Đóng mở menu" aria-expanded="true">
+      ☰
+    </button>
+    <div id="sidebarOverlay" class="sidebarOverlay"></div>
+    {{> sidebar}}
+    <main>
+      {{{body}}}
+    </main>
+  </div>
 
+  {{#if appScript}}
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
   <script src="/javascripts/app.js"></script>
+  {{/if}}
+  <script>
+    (function() {
+      var key = 'amamySidebarCollapsed';
+      var body = document.body;
+      var toggle = document.getElementById('sidebarToggle');
+      var overlay = document.getElementById('sidebarOverlay');
+
+      function isSmallScreen() {
+        return window.matchMedia('(max-width: 1100px)').matches;
+      }
+
+      function applyState(collapsed) {
+        body.classList.toggle('sidebarCollapsed', collapsed);
+        if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+      }
+
+      applyState(isSmallScreen() || localStorage.getItem(key) === '1');
+
+      if (toggle) {
+        toggle.addEventListener('click', function() {
+          var collapsed = !body.classList.contains('sidebarCollapsed');
+          applyState(collapsed);
+          if (!isSmallScreen()) localStorage.setItem(key, collapsed ? '1' : '0');
+        });
+      }
+
+      if (overlay) {
+        overlay.addEventListener('click', function() {
+          applyState(true);
+        });
+      }
+
+      window.addEventListener('resize', function() {
+        if (isSmallScreen()) applyState(true);
+        else applyState(localStorage.getItem(key) === '1');
+      });
+    })();
+  </script>
 </body>
 
 </html>

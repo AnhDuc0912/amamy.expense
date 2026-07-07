@@ -15,6 +15,11 @@ var maxReceiptSize = 5 * 1024 * 1024;
 var codNoInvoiceCategory = 'Phí COD (không thu vào hóa đơn KH)';
 var codWithInvoiceCategory = 'Phí COD (thu hóa đơn KH)';
 var materialRoute = 'Vật liệu';
+var pageRecordTypes = [
+  'khieu-nai-den-bu',
+  'chi-tieu-van-hanh',
+  'chi-tieu-noi-bo'
+];
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -26,6 +31,26 @@ function validMonth(value) {
 
 function cleanText(value, maxLength) {
   return String(value || '').trim().slice(0, maxLength);
+}
+
+function cleanPageRecordValue(value, depth) {
+  if (depth > 4) return null;
+  if (value == null || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') return value.trim().slice(0, 2000);
+  if (Array.isArray(value)) {
+    return value.slice(0, 50).map(function(item) {
+      return cleanPageRecordValue(item, depth + 1);
+    });
+  }
+  if (typeof value === 'object') {
+    return Object.keys(value).slice(0, 80).reduce(function(result, key) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') return result;
+      result[key.slice(0, 120)] = cleanPageRecordValue(value[key], depth + 1);
+      return result;
+    }, {});
+  }
+  return null;
 }
 
 function parseAmount(value) {
@@ -200,6 +225,64 @@ function prepareReceipts(receipts) {
     };
   });
 }
+
+router.get('/page-records/:page', async function(req, res, next) {
+  try {
+    if (pageRecordTypes.indexOf(req.params.page) === -1) {
+      return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
+    }
+
+    var records = await store.listPageRecords(req.params.page);
+    res.json({ records: records });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/page-records/:page', async function(req, res, next) {
+  try {
+    if (pageRecordTypes.indexOf(req.params.page) === -1) {
+      return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
+    }
+
+    var data = cleanPageRecordValue(req.body && req.body.record, 0);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return sendError(res, 400, 'Dữ liệu phiếu không hợp lệ');
+    }
+
+    var record = await store.createPageRecord(
+      req.params.page,
+      crypto.randomBytes(12).toString('hex'),
+      data
+    );
+    res.status(201).json({ record: record });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/page-records/:page/:id', async function(req, res, next) {
+  try {
+    if (pageRecordTypes.indexOf(req.params.page) === -1) {
+      return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
+    }
+    if (!/^[a-f0-9]{24}$/.test(req.params.id)) {
+      return sendError(res, 400, 'Mã phiếu không hợp lệ');
+    }
+    if (!validPassword(req.body && req.body.password)) {
+      return sendError(res, 403, 'Sai mật khẩu xoá phiếu');
+    }
+
+    var actor = cleanText(req.body && req.body.actor, 120);
+    if (!actor) return sendError(res, 400, 'Vui lòng nhập tên người xoá');
+
+    var deleted = await store.softDeletePageRecord(req.params.page, req.params.id, actor);
+    if (!deleted) return sendError(res, 404, 'Không tìm thấy phiếu');
+    res.json({ record: deleted });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/bootstrap', async function(req, res, next) {
   try {

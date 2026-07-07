@@ -1,0 +1,528 @@
+<style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+    .mvp-page {
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+    header {
+      display: block;
+      background: linear-gradient(180deg, var(--blue), var(--blue2));;
+      color: white;
+      padding: 18px 28px;
+      margin: 0 0 18px;
+    }
+    header h1 { margin: 0; font-size: 22px; color: white; overflow-wrap: anywhere; }
+    header p { margin: 6px 0 0; color: #cbd5e1; font-size: 14px; }
+
+    .wrap {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      gap: 20px;
+      padding: 20px 0;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .card {
+      background: white;
+      min-width: 0;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+      padding: 18px;
+    }
+    h2 { font-size: 18px; margin: 0 0 16px; }
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin: 14px 0 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .hidden { display: none; }
+
+    .page-main {
+      min-width: 0;
+      overflow: hidden;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .box {
+      padding: 16px;
+      border-radius: 14px;
+      background: white;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+    }
+    .box span {
+      display: block;
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .box strong { font-size: 20px; }
+
+    button {
+      border: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    button:hover { background: #1d4ed8; }
+    .deleteBtn {
+      width: auto;
+      margin: 0;
+      padding: 7px 10px;
+      background: #dc2626;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    .deleteBtn:hover { background: #b91c1c; }
+
+    .loss-preview {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      font-size: 14px;
+    }
+    .loss-preview strong { color: #dc2626; }
+
+    table {
+      width: 100%;
+      min-width: 1040px;
+      border-collapse: collapse;
+      background: white;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th { background: #f8fafc; color: #334155; }
+    .badge {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .green { background: #dcfce7; color: #166534; }
+    .yellow { background: #fef3c7; color: #92400e; }
+    .red { background: #fee2e2; color: #991b1b; }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .tableScroll {
+      max-width: 100%;
+      overflow-x: auto;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+    }
+    @media (max-width: 1000px) {
+      .wrap { grid-template-columns: minmax(0, 1fr); }
+      .summary { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+<div class="mvp-page">
+<header>
+    <h1>Amamy - Khiếu nại & Đền bù</h1>
+    <p>MVP nhập phiếu hoàn tiền, theo dõi đối tác bồi hoàn và lỗ thực tế Amamy</p>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <h2>Tạo phiếu đền bù</h2>
+
+      <label>Người chi</label>
+      <select id="payer">
+        <option>Long</option>
+      </select>
+
+      <label>Chiều</label>
+      <select id="route">
+        <option>Việt Mỹ</option>
+        <option>Việt Úc</option>
+        <option>Việt Canada</option>
+        <option>Việt Pháp</option>
+        <option>Việt Nhật</option>
+        <option>Việt Séc</option>
+        <option>Việt Đức</option>
+        <option>Việt Châu Âu</option>
+        <option>Việt Đông Lạnh</option>
+        <option>Nhật Việt</option>
+        <option>Đức Việt</option>
+        <option>Mỹ Việt</option>
+        <option>Hàng đông lạnh</option>
+      </select>
+
+      <label>Mục</label>
+      <select id="category" onchange="renderForm()">
+        <option value="promo">Hoàn ưu đãi</option>
+        <option value="error">Hoàn tiền do lỗi</option>
+        <option value="lost">Hoàn thất lạc hàng hóa</option>
+      </select>
+
+      <div id="errorFields" class="hidden">
+        <label>Chọn lỗi</label>
+        <select id="errorType" onchange="renderForm()">
+          <option>Hỏng hàng</option>
+          <option>Mất hàng</option>
+          <option>Thiếu hàng</option>
+          <option>Lý do khác</option>
+        </select>
+
+        <div id="otherReasonBox" class="hidden">
+          <label>Nhập lý do khác</label>
+          <input id="otherReason" placeholder="Ví dụ: khách khiếu nại do sai cân..." />
+        </div>
+      </div>
+
+      <div id="lostFields" class="hidden">
+        <label>Số tiền đối tác hoàn</label>
+        <input id="partnerAmount" type="text" inputmode="numeric" placeholder="Ví dụ: 3.477.086" oninput="formatMoneyInput(this); updateLossPreview();" />
+
+        <label>Trạng thái đối tác</label>
+        <select id="partnerStatus" onchange="updateLossPreview()">
+          <option>Đối tác đã hoàn</option>
+          <option>Đối tác chưa hoàn</option>
+        </select>
+      </div>
+
+      <label>Số tiền Amamy hoàn khách</label>
+      <input id="amamyAmount" type="text" inputmode="numeric" placeholder="Ví dụ: 11.656.000" oninput="formatMoneyInput(this); updateLossPreview();" />
+
+      <label>Ghi chú</label>
+      <textarea id="note" placeholder="Ghi chú xử lý, mã đơn, khách hàng..."></textarea>
+
+      <div class="loss-preview">
+        Lỗ thực tế Amamy: <strong id="lossPreview">0 đ</strong>
+        <div id="warningText"></div>
+      </div>
+
+      <button onclick="addRecord()">Lưu phiếu</button>
+    </section>
+
+    <div class="page-main">
+      <div class="summary">
+        <div class="box"><span>Tổng Amamy đã hoàn</span><strong id="sumAmamy">0 đ</strong></div>
+        <div class="box"><span>Tổng đối tác đã hoàn</span><strong id="sumPartner">0 đ</strong></div>
+        <div class="box"><span>Tổng lỗ thực tế</span><strong id="sumLoss">0 đ</strong></div>
+        <div class="box"><span>Đang chờ đối tác hoàn</span><strong id="sumPending">0 đ</strong></div>
+      </div>
+
+      <section class="card" style="margin-bottom:14px;">
+        <h2>Lọc dữ liệu</h2>
+        <div class="filters">
+          <select id="filterRoute" onchange="renderTable()">
+            <option value="">Tất cả chiều</option>
+          </select>
+          <select id="filterCategory" onchange="renderTable()">
+            <option value="">Tất cả mục</option>
+            <option>Hoàn ưu đãi</option>
+            <option>Hoàn tiền do lỗi</option>
+            <option>Hoàn thất lạc hàng hóa</option>
+          </select>
+          <select id="filterStatus" onchange="renderTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option>Đối tác đã hoàn</option>
+            <option>Đối tác chưa hoàn</option>
+            <option>Không áp dụng</option>
+          </select>
+        </div>
+      </section>
+
+      <div class="tableScroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Ngày</th>
+            <th>Người chi</th>
+            <th>Chiều</th>
+            <th>Mục</th>
+            <th>Lý do</th>
+            <th>Amamy hoàn</th>
+            <th>Đối tác hoàn</th>
+            <th>Trạng thái</th>
+            <th>Lỗ thực tế</th>
+            <th>Ghi chú</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script>
+    const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Hàng đông lạnh"];
+    const PAGE_RECORD_TYPE = "khieu-nai-den-bu";
+    let records = [];
+
+    const escapeHtml = value => String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    async function requestJson(url, options) {
+      const response = await fetch(url, options);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Không thể lưu dữ liệu");
+      return payload;
+    }
+
+    async function loadRecords() {
+      const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
+      records = payload.records || [];
+    }
+
+    async function saveRecord(record) {
+      const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record })
+      });
+      records.unshift(payload.record);
+    }
+
+    async function deleteRecord(id) {
+      const actor = prompt("Nhập tên người xoá");
+      if (actor === null) return;
+      if (!actor.trim()) {
+        alert("Vui lòng nhập tên người xoá");
+        return;
+      }
+
+      const password = prompt("Nhập mật khẩu xoá phiếu");
+      if (password === null) return;
+
+      try {
+        await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actor, password })
+        });
+        records = records.filter(record => record.id !== id);
+        renderTable();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function parseMoneyValue(value) {
+      return Number(String(value || "").replace(/\D/g, "")) || 0;
+    }
+
+    function formatMoneyInput(input) {
+      const raw = input.value.replace(/\D/g, "");
+      if (!raw) {
+        input.value = "";
+        return;
+      }
+      input.value = Number(raw).toLocaleString("vi-VN");
+    }
+
+    function money(n) {
+      return Number(n || 0).toLocaleString("vi-VN") + " đ";
+    }
+
+    function initFilters() {
+      const filterRoute = document.getElementById("filterRoute");
+      routes.forEach(r => {
+        const opt = document.createElement("option");
+        opt.textContent = r;
+        opt.value = r;
+        filterRoute.appendChild(opt);
+      });
+    }
+
+    function renderForm() {
+      const category = document.getElementById("category").value;
+      const errorFields = document.getElementById("errorFields");
+      const lostFields = document.getElementById("lostFields");
+      const otherReasonBox = document.getElementById("otherReasonBox");
+
+      errorFields.classList.toggle("hidden", category !== "error");
+      lostFields.classList.toggle("hidden", category !== "lost");
+
+      const errorType = document.getElementById("errorType").value;
+      otherReasonBox.classList.toggle("hidden", !(category === "error" && errorType === "Lý do khác"));
+
+      updateLossPreview();
+    }
+
+    function updateLossPreview() {
+      const category = document.getElementById("category").value;
+      const amamy = parseMoneyValue(document.getElementById("amamyAmount").value);
+      const partner = parseMoneyValue(document.getElementById("partnerAmount").value);
+      const status = document.getElementById("partnerStatus").value;
+      let loss = 0;
+      let warning = "";
+
+      if (category === "lost") {
+        if (status === "Đối tác chưa hoàn") {
+          loss = amamy;
+          warning = "<span style='color:#dc2626;font-weight:700'>Chưa thu hồi từ đối tác - hiện đỏ</span>";
+        } else {
+          loss = Math.max(amamy - partner, 0);
+        }
+      } else {
+        loss = amamy;
+      }
+
+      document.getElementById("lossPreview").textContent = money(loss);
+      document.getElementById("warningText").innerHTML = warning;
+    }
+
+    function getCategoryText() {
+      const v = document.getElementById("category").value;
+      if (v === "promo") return "Hoàn ưu đãi";
+      if (v === "error") return "Hoàn tiền do lỗi";
+      return "Hoàn thất lạc hàng hóa";
+    }
+
+    async function addRecord() {
+      const category = document.getElementById("category").value;
+      const amamy = parseMoneyValue(document.getElementById("amamyAmount").value);
+      const partner = category === "lost" ? parseMoneyValue(document.getElementById("partnerAmount").value) : 0;
+      const status = category === "lost" ? document.getElementById("partnerStatus").value : "Không áp dụng";
+
+      let reason = "";
+      if (category === "error") {
+        const errorType = document.getElementById("errorType").value;
+        reason = errorType === "Lý do khác" ? document.getElementById("otherReason").value : errorType;
+      } else if (category === "promo") {
+        reason = "Hoàn ưu đãi";
+      } else {
+        reason = "Thất lạc hàng hóa";
+      }
+
+      let loss = category === "lost"
+        ? (status === "Đối tác chưa hoàn" ? amamy : Math.max(amamy - partner, 0))
+        : amamy;
+
+      if (!amamy) {
+        alert("Vui lòng nhập số tiền Amamy hoàn khách");
+        return;
+      }
+
+      try {
+        await saveRecord({
+          date: new Date().toLocaleDateString("vi-VN"),
+          payer: document.getElementById("payer").value,
+          route: document.getElementById("route").value,
+          category: getCategoryText(),
+          reason,
+          amamy,
+          partner,
+          status,
+          loss,
+          note: document.getElementById("note").value
+        });
+      } catch (error) {
+        alert(error.message);
+        return;
+      }
+
+      document.getElementById("amamyAmount").value = "";
+      document.getElementById("partnerAmount").value = "";
+      document.getElementById("note").value = "";
+      document.getElementById("otherReason").value = "";
+      updateLossPreview();
+      renderTable();
+    }
+
+    function badgeClass(row) {
+      if (row.status === "Đối tác chưa hoàn") return "red";
+      if (row.loss > 0) return "yellow";
+      return "green";
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("tbody");
+      const fr = document.getElementById("filterRoute").value;
+      const fc = document.getElementById("filterCategory").value;
+      const fs = document.getElementById("filterStatus").value;
+
+      const filtered = records.filter(r =>
+        (!fr || r.route === fr) &&
+        (!fc || r.category === fc) &&
+        (!fs || r.status === fs)
+      );
+
+      tbody.innerHTML = filtered.map(r => `
+        <tr>
+          <td>${escapeHtml(r.date)}</td>
+          <td>${escapeHtml(r.payer)}</td>
+          <td>${escapeHtml(r.route)}</td>
+          <td>${escapeHtml(r.category)}</td>
+          <td>${escapeHtml(r.reason || "")}</td>
+          <td>${money(r.amamy)}</td>
+          <td>${money(r.partner)}</td>
+          <td><span class="badge ${badgeClass(r)}">${escapeHtml(r.status)}</span></td>
+          <td><strong>${money(r.loss)}</strong></td>
+          <td>${escapeHtml(r.note || "")}</td>
+          <td><button class="deleteBtn" type="button" onclick="deleteRecord('${escapeHtml(r.id)}')">Xoá</button></td>
+        </tr>
+      `).join("");
+
+      renderSummary(filtered);
+    }
+
+    function renderSummary(data) {
+      const sumAmamy = data.reduce((s, r) => s + r.amamy, 0);
+      const sumPartner = data.reduce((s, r) => s + (r.status === "Đối tác đã hoàn" ? r.partner : 0), 0);
+      const sumLoss = data.reduce((s, r) => s + r.loss, 0);
+      const sumPending = data.reduce((s, r) => s + (r.status === "Đối tác chưa hoàn" ? r.amamy : 0), 0);
+
+      document.getElementById("sumAmamy").textContent = money(sumAmamy);
+      document.getElementById("sumPartner").textContent = money(sumPartner);
+      document.getElementById("sumLoss").textContent = money(sumLoss);
+      document.getElementById("sumPending").textContent = money(sumPending);
+    }
+
+    async function initPage() {
+      initFilters();
+      renderForm();
+      try {
+        await loadRecords();
+      } catch (error) {
+        alert(error.message);
+      }
+      renderTable();
+    }
+
+    initPage();
+  </script>

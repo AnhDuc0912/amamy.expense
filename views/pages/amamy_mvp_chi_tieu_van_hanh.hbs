@@ -1,0 +1,469 @@
+<style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f6f8; color:#1f2937; }
+    .mvp-page { max-width:100%; min-width:0; overflow:hidden; }
+    header { display:block; background:linear-gradient(180deg, var(--blue), var(--blue2)); color:white; padding:18px 28px; margin:0 0 18px; }
+    header h1 { margin:0; font-size:22px; color:white; overflow-wrap:anywhere; }
+    header p { margin:6px 0 0; color:#d1d5db; font-size:14px; }
+    .wrap { display:grid; grid-template-columns:minmax(320px, 410px) minmax(0, 1fr); gap:20px; padding:20px 0; max-width:100%; min-width:0; }
+    .card { min-width:0; background:white; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.08); padding:18px; }
+    h2 { font-size:18px; margin:0 0 16px; }
+    label { display:block; font-weight:700; font-size:13px; margin:14px 0 6px; }
+    input, select, textarea {
+      width:100%; padding:11px 12px; border:1px solid #d1d5db; border-radius:10px;
+      font-size:14px; background:white;
+    }
+    textarea { min-height:70px; resize:vertical; }
+    button {
+      border:none; padding:12px 16px; border-radius:10px; background:#2563eb;
+      color:white; font-weight:700; cursor:pointer; margin-top:16px; width:100%;
+    }
+    button:hover { background:#1d4ed8; }
+    .deleteBtn {
+      width:auto; margin:0; padding:7px 10px; background:#dc2626;
+      border-radius:8px; font-size:12px;
+    }
+    .deleteBtn:hover { background:#b91c1c; }
+    .hidden { display:none; }
+    .page-main { min-width:0; overflow:hidden; }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px; }
+    .box { padding:14px; border-radius:14px; background:white; box-shadow:0 4px 16px rgba(15,23,42,.08); }
+    .box span { display:block; color:#64748b; font-size:12px; margin-bottom:8px; }
+    .box strong { font-size:18px; }
+    .filters { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px; }
+    .tableScroll { max-width:100%; overflow-x:auto; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.08); }
+    table { width:100%; min-width:1100px; border-collapse:collapse; background:white; overflow:hidden; }
+    th, td { padding:11px 9px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:13px; vertical-align:top; }
+    th { background:#f8fafc; color:#334155; }
+    .badge { padding:5px 9px; border-radius:999px; font-weight:700; font-size:12px; display:inline-block; }
+    .green { background:#dcfce7; color:#166534; }
+    .yellow { background:#fef3c7; color:#92400e; }
+    .red { background:#fee2e2; color:#991b1b; }
+    .blue { background:#dbeafe; color:#1e40af; }
+    .preview { margin-top:14px; padding:12px; border-radius:10px; background:#f8fafc; border:1px dashed #cbd5e1; font-size:14px; }
+    .preview strong { color:#2563eb; }
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width:1200px) {
+      .wrap { grid-template-columns:minmax(0, 1fr); }
+      .summary { grid-template-columns:repeat(2,1fr); }
+      .filters { grid-template-columns:repeat(2,1fr); }
+    }
+  </style>
+<div class="mvp-page">
+<header>
+  <h1>Amamy - Chi tiêu vận hành</h1>
+  <p>MVP quản lý chi phí vận hành cố định: mặt bằng, thuế, BHXH, lương, điện nước, HR, IT và chi phí khác</p>
+</header>
+
+<div class="wrap">
+  <section class="card">
+    <h2>Tạo phiếu chi vận hành</h2>
+
+    <label>Người tạo phiếu</label>
+    <select id="creatorType" onchange="renderForm()">
+      <option>Long</option>
+      <option>Người khác</option>
+    </select>
+
+    <div id="creatorOtherBox" class="hidden">
+      <label>Nhập tên người tạo</label>
+      <input id="creatorOther" placeholder="Ví dụ: Liên, Duy..." />
+    </div>
+
+    <label>Ngày chi</label>
+    <input id="date" type="date" />
+
+    <label>Mục chi tiêu</label>
+    <select id="category" onchange="renderForm()">
+      <option>Thuê mặt bằng HCM</option>
+      <option>Thuê mặt bằng Hà Nội</option>
+      <option>Chi tiêu bảo hiểm xã hội</option>
+      <option>Phí thuế thu nhập doanh nghiệp</option>
+      <option>Thuế môn bài</option>
+      <option>Thuế GTGT</option>
+      <option>Lương nhân viên</option>
+      <option>Liên hoan nhân viên</option>
+      <option>Tiền điện</option>
+      <option>Tiền nước</option>
+      <option>Thuê HR bên thứ 3 tuyển dụng</option>
+      <option>Thuê IT bên thứ 3</option>
+      <option>Chi phí khác</option>
+    </select>
+
+    <div id="branchBox" class="hidden">
+      <label>Chi nhánh</label>
+      <select id="branch">
+        <option>Hà Nội</option>
+        <option>HCM</option>
+      </select>
+    </div>
+
+    <div id="salaryBox" class="hidden">
+      <label>Tên nhân viên</label>
+      <input id="employeeName" placeholder="Ví dụ: Liên, Duy, Hồng..." />
+      <label>Kỳ lương</label>
+      <input id="salaryPeriod" placeholder="Ví dụ: Tháng 7/2026" />
+    </div>
+
+    <div id="thirdPartyBox" class="hidden">
+      <label>Tên bên thứ 3</label>
+      <input id="thirdPartyName" placeholder="Ví dụ: đơn vị HR / IT thuê ngoài" />
+    </div>
+
+    <div id="otherBox" class="hidden">
+      <label>Ghi rõ tên lý do</label>
+      <input id="otherReason" placeholder="Ví dụ: sửa máy lạnh, mua thiết bị..." />
+    </div>
+
+    <label>Thanh toán bằng</label>
+    <select id="paymentMethod">
+      <option>STK công ty</option>
+      <option>STK cá nhân Long</option>
+      <option>Chuyển khoản công ty</option>
+      <option>Tiền mặt</option>
+      <option>Thẻ Visa</option>
+      <option>Khác</option>
+    </select>
+
+    <div class="row2">
+      <div>
+        <label>Số tiền</label>
+        <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 11.000.000" oninput="formatMoneyInput(this); updatePreview();" />
+      </div>
+      <div>
+        <label>Trạng thái</label>
+        <select id="status">
+          <option>Đã thanh toán</option>
+          <option>Chưa thanh toán</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Ghi chú</label>
+    <textarea id="note" placeholder="Ghi chú: kỳ thanh toán, hóa đơn, nội dung chi..."></textarea>
+
+    <div class="preview">
+      Số tiền ghi nhận: <strong id="amountPreview">0 đ</strong>
+    </div>
+
+    <button onclick="addRecord()">Lưu phiếu chi</button>
+  </section>
+
+  <div class="page-main">
+    <div class="summary">
+      <div class="box"><span>Tổng vận hành</span><strong id="sumTotal">0 đ</strong></div>
+      <div class="box"><span>Đã thanh toán</span><strong id="sumPaid">0 đ</strong></div>
+      <div class="box"><span>Chưa thanh toán</span><strong id="sumUnpaid">0 đ</strong></div>
+      <div class="box"><span>Chi phí nhân sự</span><strong id="sumHR">0 đ</strong></div>
+      <div class="box"><span>Thuế / BHXH</span><strong id="sumTax">0 đ</strong></div>
+    </div>
+
+    <section class="card" style="margin-bottom:14px;">
+      <h2>Bộ lọc</h2>
+      <div class="filters">
+        <select id="filterCategory" onchange="renderTable()">
+          <option value="">Tất cả mục chi</option>
+        </select>
+
+        <select id="filterBranch" onchange="renderTable()">
+          <option value="">Tất cả chi nhánh</option>
+          <option>Hà Nội</option>
+          <option>HCM</option>
+          <option>Không áp dụng</option>
+        </select>
+
+        <select id="filterStatus" onchange="renderTable()">
+          <option value="">Tất cả trạng thái</option>
+          <option>Đã thanh toán</option>
+          <option>Chưa thanh toán</option>
+        </select>
+
+        <select id="filterCreator" onchange="renderTable()">
+          <option value="">Tất cả người tạo</option>
+          <option>Long</option>
+        </select>
+
+        <select id="filterPayment" onchange="renderTable()">
+          <option value="">Tất cả phương thức</option>
+          <option>STK công ty</option>
+          <option>STK cá nhân Long</option>
+          <option>Chuyển khoản công ty</option>
+          <option>Tiền mặt</option>
+          <option>Thẻ Visa</option>
+          <option>Khác</option>
+        </select>
+
+        <select id="filterGroup" onchange="renderTable()">
+          <option value="">Tất cả nhóm chi</option>
+          <option>Mặt bằng</option>
+          <option>Thuế / BHXH</option>
+          <option>Nhân sự</option>
+          <option>Điện nước</option>
+          <option>Thuê ngoài</option>
+          <option>Khác</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="tableScroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Ngày</th>
+          <th>Người tạo</th>
+          <th>Nhóm chi</th>
+          <th>Mục chi</th>
+          <th>Chi nhánh</th>
+          <th>Chi tiết</th>
+          <th>Thanh toán bằng</th>
+          <th>Số tiền</th>
+          <th>Trạng thái</th>
+          <th>Ghi chú</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const categories = [
+  "Thuê mặt bằng HCM",
+  "Thuê mặt bằng Hà Nội",
+  "Chi tiêu bảo hiểm xã hội",
+  "Phí thuế thu nhập doanh nghiệp",
+  "Thuế môn bài",
+  "Thuế GTGT",
+  "Lương nhân viên",
+  "Liên hoan nhân viên",
+  "Tiền điện",
+  "Tiền nước",
+  "Thuê HR bên thứ 3 tuyển dụng",
+  "Thuê IT bên thứ 3",
+  "Chi phí khác"
+];
+
+const PAGE_RECORD_TYPE = "chi-tieu-van-hanh";
+let records = [];
+
+const escapeHtml = value => String(value == null ? "" : value)
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
+
+async function requestJson(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Không thể lưu dữ liệu");
+  return payload;
+}
+
+async function loadRecords() {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
+  records = payload.records || [];
+}
+
+async function saveRecord(record) {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ record })
+  });
+  records.unshift(payload.record);
+}
+
+async function deleteRecord(id) {
+  const actor = prompt("Nhập tên người xoá");
+  if (actor === null) return;
+  if (!actor.trim()) {
+    alert("Vui lòng nhập tên người xoá");
+    return;
+  }
+
+  const password = prompt("Nhập mật khẩu xoá phiếu");
+  if (password === null) return;
+
+  try {
+    await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor, password })
+    });
+    records = records.filter(record => record.id !== id);
+    renderTable();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function parseMoneyValue(value) {
+  return Number(String(value || "").replace(/\D/g, "")) || 0;
+}
+function formatMoneyInput(input) {
+  const raw = input.value.replace(/\D/g, "");
+  if (!raw) { input.value = ""; return; }
+  input.value = Number(raw).toLocaleString("vi-VN");
+}
+function money(n) { return Number(n || 0).toLocaleString("vi-VN") + " đ"; }
+
+function getGroup(category) {
+  if (category.includes("Thuê mặt bằng")) return "Mặt bằng";
+  if (["Chi tiêu bảo hiểm xã hội","Phí thuế thu nhập doanh nghiệp","Thuế môn bài","Thuế GTGT"].includes(category)) return "Thuế / BHXH";
+  if (["Lương nhân viên","Liên hoan nhân viên"].includes(category)) return "Nhân sự";
+  if (["Tiền điện","Tiền nước"].includes(category)) return "Điện nước";
+  if (["Thuê HR bên thứ 3 tuyển dụng","Thuê IT bên thứ 3"].includes(category)) return "Thuê ngoài";
+  return "Khác";
+}
+
+function getBranch(category) {
+  if (category === "Thuê mặt bằng HCM") return "HCM";
+  if (category === "Thuê mặt bằng Hà Nội") return "Hà Nội";
+  if (["Liên hoan nhân viên","Tiền điện","Tiền nước"].includes(category)) {
+    return document.getElementById("branch").value;
+  }
+  return "Không áp dụng";
+}
+
+function getDetail(category) {
+  if (category === "Lương nhân viên") {
+    const name = document.getElementById("employeeName").value || "Nhân viên";
+    const period = document.getElementById("salaryPeriod").value || "";
+    return period ? `${name} - ${period}` : name;
+  }
+  if (["Thuê HR bên thứ 3 tuyển dụng","Thuê IT bên thứ 3"].includes(category)) {
+    return document.getElementById("thirdPartyName").value || "Bên thứ 3";
+  }
+  if (category === "Chi phí khác") {
+    return document.getElementById("otherReason").value || "Chi phí khác";
+  }
+  if (category === "Liên hoan nhân viên") return "Liên hoan nhân viên";
+  if (category === "Tiền điện") return "Tiền điện chi nhánh";
+  if (category === "Tiền nước") return "Tiền nước chi nhánh";
+  return category;
+}
+
+async function init() {
+  document.getElementById("date").valueAsDate = new Date();
+  const filterCategory = document.getElementById("filterCategory");
+  categories.forEach(c => filterCategory.appendChild(new Option(c,c)));
+  renderForm();
+  try {
+    await loadRecords();
+  } catch (error) {
+    alert(error.message);
+  }
+  renderTable();
+}
+
+function renderForm() {
+  const creatorType = document.getElementById("creatorType").value;
+  document.getElementById("creatorOtherBox").classList.toggle("hidden", creatorType !== "Người khác");
+
+  const category = document.getElementById("category").value;
+  const needBranch = ["Liên hoan nhân viên","Tiền điện","Tiền nước"].includes(category);
+  document.getElementById("branchBox").classList.toggle("hidden", !needBranch);
+  document.getElementById("salaryBox").classList.toggle("hidden", category !== "Lương nhân viên");
+  document.getElementById("thirdPartyBox").classList.toggle("hidden", !["Thuê HR bên thứ 3 tuyển dụng","Thuê IT bên thứ 3"].includes(category));
+  document.getElementById("otherBox").classList.toggle("hidden", category !== "Chi phí khác");
+  updatePreview();
+}
+
+function updatePreview() {
+  document.getElementById("amountPreview").textContent = money(parseMoneyValue(document.getElementById("amount").value));
+}
+
+async function addRecord() {
+  const category = document.getElementById("category").value;
+  const creator = document.getElementById("creatorType").value === "Người khác"
+    ? (document.getElementById("creatorOther").value || "Người khác")
+    : "Long";
+  const amount = parseMoneyValue(document.getElementById("amount").value);
+
+  if (!amount) {
+    alert("Vui lòng nhập số tiền");
+    return;
+  }
+
+  try {
+    await saveRecord({
+      date: document.getElementById("date").value,
+      creator,
+      group: getGroup(category),
+      category,
+      branch: getBranch(category),
+      detail: getDetail(category),
+      payment: document.getElementById("paymentMethod").value,
+      amount,
+      status: document.getElementById("status").value,
+      note: document.getElementById("note").value
+    });
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  document.getElementById("amount").value = "";
+  document.getElementById("note").value = "";
+  updatePreview();
+  renderTable();
+}
+
+function badgeClass(status) {
+  return status === "Đã thanh toán" ? "green" : "yellow";
+}
+
+function renderTable() {
+  const fc = document.getElementById("filterCategory").value;
+  const fb = document.getElementById("filterBranch").value;
+  const fs = document.getElementById("filterStatus").value;
+  const fcreator = document.getElementById("filterCreator").value;
+  const fp = document.getElementById("filterPayment").value;
+  const fg = document.getElementById("filterGroup").value;
+
+  const filtered = records.filter(r =>
+    (!fc || r.category === fc) &&
+    (!fb || r.branch === fb) &&
+    (!fs || r.status === fs) &&
+    (!fcreator || r.creator === fcreator) &&
+    (!fp || r.payment === fp) &&
+    (!fg || r.group === fg)
+  );
+
+  document.getElementById("tbody").innerHTML = filtered.map(r => `
+    <tr>
+      <td>${escapeHtml(r.date)}</td>
+      <td>${escapeHtml(r.creator)}</td>
+      <td><span class="badge blue">${escapeHtml(r.group)}</span></td>
+      <td>${escapeHtml(r.category)}</td>
+      <td>${escapeHtml(r.branch)}</td>
+      <td>${escapeHtml(r.detail)}</td>
+      <td>${escapeHtml(r.payment)}</td>
+      <td><strong>${money(r.amount)}</strong></td>
+      <td><span class="badge ${badgeClass(r.status)}">${escapeHtml(r.status)}</span></td>
+      <td>${escapeHtml(r.note || "")}</td>
+      <td><button class="deleteBtn" type="button" onclick="deleteRecord('${escapeHtml(r.id)}')">Xoá</button></td>
+    </tr>
+  `).join("");
+
+  renderSummary(filtered);
+}
+
+function sumBy(data, fn) {
+  return data.filter(fn).reduce((s,r)=>s+r.amount,0);
+}
+
+function renderSummary(data) {
+  document.getElementById("sumTotal").textContent = money(data.reduce((s,r)=>s+r.amount,0));
+  document.getElementById("sumPaid").textContent = money(sumBy(data, r => r.status === "Đã thanh toán"));
+  document.getElementById("sumUnpaid").textContent = money(sumBy(data, r => r.status === "Chưa thanh toán"));
+  document.getElementById("sumHR").textContent = money(sumBy(data, r => r.group === "Nhân sự"));
+  document.getElementById("sumTax").textContent = money(sumBy(data, r => r.group === "Thuế / BHXH"));
+}
+
+init();
+</script>

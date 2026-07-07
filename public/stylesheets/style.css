@@ -23,17 +23,59 @@ body {
 
 .app {
   display: flex;
-  min-height: 100vh
+  min-height: 100vh;
+  position: relative
+}
+
+.sidebarToggle {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 30;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #0f1b33;
+  color: #fff;
+  font-size: 22px;
+  padding: 0 12px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 32, 58, .22)
+}
+
+.sidebarToggle:hover {
+  background: #1f2f52
+}
+
+.sidebarOverlay {
+  display: none
 }
 
 .sidebar {
   width: 260px;
+  flex: 0 0 260px;
   background: linear-gradient(180deg, var(--blue), var(--blue2));
   color: white;
-  padding: 28px 20px;
+  padding: 70px 20px 28px;
   position: sticky;
   top: 0;
-  height: 100vh
+  height: 100vh;
+  overflow-y: auto;
+  transition: width .2s ease, flex-basis .2s ease, padding .2s ease, transform .2s ease
+}
+
+.sidebarCollapsed .sidebar {
+  width: 0;
+  flex-basis: 0;
+  padding-left: 0;
+  padding-right: 0;
+  overflow: hidden
+}
+
+.sidebarCollapsed .sidebar>* {
+  opacity: 0;
+  pointer-events: none
 }
 
 .brand {
@@ -67,6 +109,14 @@ nav a:hover {
   background: rgba(255, 255, 255, .18)
 }
 
+.sidebarDivider {
+  display: block;
+  width: calc(100%);
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .62)
+}
+
 .sideBox {
   position: absolute;
   left: 20px;
@@ -85,6 +135,7 @@ nav a:hover {
 
 main {
   flex: 1;
+  min-width: 0;
   padding: 24px;
   overflow: auto
 }
@@ -647,7 +698,46 @@ dialog img {
 
 @media(max-width:1100px) {
   .sidebar {
-    display: none
+    position: fixed;
+    z-index: 25;
+    left: 0;
+    top: 0;
+    width: 260px;
+    flex-basis: auto;
+    transform: translateX(0);
+    box-shadow: 16px 0 36px rgba(15, 32, 58, .22)
+  }
+
+  .sidebarCollapsed .sidebar {
+    width: 260px;
+    padding-left: 20px;
+    padding-right: 20px;
+    transform: translateX(-100%)
+  }
+
+  .sidebarCollapsed .sidebar>* {
+    opacity: 1;
+    pointer-events: auto
+  }
+
+  .sidebarOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(15, 23, 42, .36);
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity .2s ease
+  }
+
+  .sidebarCollapsed .sidebarOverlay {
+    opacity: 0;
+    pointer-events: none
+  }
+
+  main {
+    padding-left: 64px
   }
 
   .topFilters {
@@ -679,7 +769,12 @@ dialog img {
 
 @media(max-width:700px) {
   main {
-    padding: 14px
+    padding: 70px 14px 14px
+  }
+
+  .sidebarToggle {
+    top: 14px;
+    left: 14px
   }
 
   .cards,

@@ -3,7 +3,32 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+  res.render('index', {
+    title: 'Amamy - Quản lý chi tiêu',
+    appScript: true,
+    navDashboard: true
+  });
+});
+
+router.get('/khieu-nai-den-bu', function(req, res) {
+  res.render('pages/amamy_mvp_khieu_nai_den_bu_full_fixed', {
+    title: 'Amamy - Khiếu nại & Đền bù',
+    navKhieuNai: true
+  });
+});
+
+router.get('/chi-tieu-noi-bo', function(req, res) {
+  res.render('pages/amamy_mvp_chi_tieu_noi_bo_full_fixed_ads_chung', {
+    title: 'Amamy - Chi tiêu nội bộ',
+    navNoiBo: true
+  });
+});
+
+router.get('/chi-tieu-van-hanh', function(req, res) {
+  res.render('pages/amamy_mvp_chi_tieu_van_hanh', {
+    title: 'Amamy - Chi tiêu vận hành',
+    navVanHanh: true
+  });
 });
 
 module.exports = router;

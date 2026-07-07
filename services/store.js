@@ -44,7 +44,9 @@ async function initialize() {
       database.collection('receipts').createIndex({ expenseId: 1 }),
       database.collection('receipts').createIndex({ paymentId: 1 }),
       database.collection('auditLogs').createIndex({ id: 1 }, { unique: true }),
-      database.collection('auditLogs').createIndex({ createdAt: -1 })
+      database.collection('auditLogs').createIndex({ createdAt: -1 }),
+      database.collection('pageRecords').createIndex({ id: 1 }, { unique: true }),
+      database.collection('pageRecords').createIndex({ page: 1, createdAt: -1 })
     ]);
   })().catch(async function(error) {
     initialization = null;
@@ -398,6 +400,47 @@ async function createAuditLog(log) {
   return log;
 }
 
+function publicPageRecord(document) {
+  return Object.assign({}, document.data || {}, {
+    id: document.id,
+    createdAt: document.createdAt instanceof Date
+      ? document.createdAt.toISOString()
+      : document.createdAt
+  });
+}
+
+async function listPageRecords(page) {
+  await initialize();
+  var records = await database.collection('pageRecords')
+    .find({ page: page, deletedAt: { $exists: false } }, { projection: { _id: 0 } })
+    .sort({ createdAt: -1 })
+    .toArray();
+  return records.map(publicPageRecord);
+}
+
+async function createPageRecord(page, id, data) {
+  await initialize();
+  var document = {
+    id: id,
+    page: page,
+    data: data,
+    createdAt: new Date()
+  };
+  await database.collection('pageRecords').insertOne(document);
+  return publicPageRecord(document);
+}
+
+async function softDeletePageRecord(page, id, actor) {
+  await initialize();
+  var deletedAt = new Date();
+  var result = await database.collection('pageRecords').findOneAndUpdate(
+    { page: page, id: id, deletedAt: { $exists: false } },
+    { $set: { deletedAt: deletedAt, deletedBy: actor } },
+    { returnDocument: 'after', projection: { _id: 0 } }
+  );
+  return result ? publicPageRecord(result) : null;
+}
+
 async function getReceipt(id) {
   await initialize();
   return database.collection('receipts').findOne(
@@ -435,6 +478,9 @@ module.exports = {
   deleteExpense: deleteExpense,
   updateExpenseAmount: updateExpenseAmount,
   createAuditLog: createAuditLog,
+  listPageRecords: listPageRecords,
+  createPageRecord: createPageRecord,
+  softDeletePageRecord: softDeletePageRecord,
   getReceipt: getReceipt,
   health: health,
   dropDatabase: dropDatabase,

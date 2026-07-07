@@ -72,6 +72,67 @@ test('bootstrap exposes company payer options', async function() {
   ]);
 });
 
+test('page records persist MVP form data by page', async function() {
+  var created = await jsonRequest('/api/page-records/khieu-nai-den-bu', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      record: {
+        date: '07/07/2026',
+        payer: 'Long',
+        route: 'Việt Pháp',
+        category: 'Hoàn thất lạc hàng hóa',
+        amount: 11656000,
+        note: '<script>alert(1)</script>'
+      }
+    })
+  });
+  assert.equal(created.response.status, 201);
+  assert.ok(created.body.record.id);
+  assert.equal(created.body.record.payer, 'Long');
+
+  var listed = await jsonRequest('/api/page-records/khieu-nai-den-bu');
+  assert.equal(listed.response.status, 200);
+  assert.equal(listed.body.records[0].id, created.body.record.id);
+  assert.equal(listed.body.records[0].note, '<script>alert(1)</script>');
+
+  var deniedDelete = await jsonRequest('/api/page-records/khieu-nai-den-bu/' + created.body.record.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'wrong' })
+  });
+  assert.equal(deniedDelete.response.status, 403);
+
+  var missingActor = await jsonRequest('/api/page-records/khieu-nai-den-bu/' + created.body.record.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: 'test-password' })
+  });
+  assert.equal(missingActor.response.status, 400);
+
+  var otherPage = await jsonRequest('/api/page-records/chi-tieu-van-hanh');
+  assert.equal(otherPage.response.status, 200);
+  assert.equal(otherPage.body.records.some(function(record) {
+    return record.id === created.body.record.id;
+  }), false);
+
+  var deleted = await jsonRequest('/api/page-records/khieu-nai-den-bu/' + created.body.record.id, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actor: 'Tester', password: 'test-password' })
+  });
+  assert.equal(deleted.response.status, 200);
+  assert.equal(deleted.body.record.id, created.body.record.id);
+
+  var listedAfterDelete = await jsonRequest('/api/page-records/khieu-nai-den-bu');
+  assert.equal(listedAfterDelete.body.records.some(function(record) {
+    return record.id === created.body.record.id;
+  }), false);
+
+  var invalidPage = await jsonRequest('/api/page-records/unknown-page');
+  assert.equal(invalidPage.response.status, 404);
+});
+
 test('store payment requires receipt and updates cash summary', async function() {
   var missingReceipt = await jsonRequest('/api/payments', {
     method: 'POST',
