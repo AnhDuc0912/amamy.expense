@@ -31,4 +31,11 @@ router.get('/chi-tieu-van-hanh', function(req, res) {
   });
 });
 
+router.get('/doanh-thu-gia-von', function(req, res) {
+  res.render('pages/amamy_mvp_doanh_thu_gia_von_ban_dep', {
+    title: 'Amamy - Doanh thu và giá vốn',
+    navDoanhThu: true
+  });
+});
+
 module.exports = router;

@@ -430,6 +430,17 @@ async function createPageRecord(page, id, data) {
   return publicPageRecord(document);
 }
 
+async function updatePageRecord(page, id, data) {
+  await initialize();
+  var updatedAt = new Date();
+  var result = await database.collection('pageRecords').findOneAndUpdate(
+    { page: page, id: id, deletedAt: { $exists: false } },
+    { $set: { data: data, updatedAt: updatedAt } },
+    { returnDocument: 'after', projection: { _id: 0 } }
+  );
+  return result ? publicPageRecord(result) : null;
+}
+
 async function softDeletePageRecord(page, id, actor) {
   await initialize();
   var deletedAt = new Date();
@@ -480,6 +491,7 @@ module.exports = {
   createAuditLog: createAuditLog,
   listPageRecords: listPageRecords,
   createPageRecord: createPageRecord,
+  updatePageRecord: updatePageRecord,
   softDeletePageRecord: softDeletePageRecord,
   getReceipt: getReceipt,
   health: health,

@@ -1,0 +1,342 @@
+<style>
+  :root{
+    --nav:#36aef0; --ink:#172033;
+    --orange:#f97316;
+  }
+  .mvp-page{max-width:100%;min-width:0}
+  .mvp-page h1{font-size:26px;margin:0}
+  .mvp-page .sub{color:var(--muted);font-size:14px;margin-top:5px}
+  .mvp-page .page-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}
+  .mvp-page .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+  .mvp-page button,.mvp-page .btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
+  .mvp-page .btn-primary{background:var(--blue);color:#fff}
+  .mvp-page .btn-light{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .mvp-page .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.05);padding:20px;margin-bottom:18px}
+  .mvp-page .card-title{font-size:18px;font-weight:800;color:#155ec5;margin-bottom:16px}
+  .mvp-page .grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:14px}
+  .mvp-page label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
+  .mvp-page input,.mvp-page select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
+  .mvp-page input:focus,.mvp-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
+  .mvp-page .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .mvp-page .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+  .mvp-page .stat span{font-size:12px;color:var(--muted);font-weight:700}
+  .mvp-page .stat strong{display:block;font-size:22px;margin-top:8px}
+  .mvp-page .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
+  .mvp-page table{width:100%;border-collapse:collapse;min-width:1120px;background:#fff}
+  .mvp-page th,.mvp-page td{padding:13px 12px;border-bottom:1px solid #edf2f7;text-align:center;font-size:13px}
+  .mvp-page th{background:#eef6ff;font-size:12px}
+  .mvp-page td:first-child,.mvp-page th:first-child{text-align:left}
+  .mvp-page .money-revenue{color:#2563eb;font-weight:800}
+  .mvp-page .money-debt,.mvp-page .money-cost{color:var(--orange);font-weight:800}
+  .mvp-page .money-profit,.mvp-page .margin{color:var(--green);font-weight:800}
+  .mvp-page .row-actions{display:flex;justify-content:center;gap:7px}
+  .mvp-page .edit{color:#2563eb;border:1px solid #93c5fd;background:#eff6ff;padding:7px 10px}
+  .mvp-page .delete{color:var(--red);border:1px solid #fca5a5;background:#fff1f2;padding:7px 10px}
+  .mvp-page tfoot td{font-weight:900;background:#f8fbff}
+  .mvp-page .empty{padding:30px;text-align:center;color:var(--muted)}
+  .modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:30}
+  .modal.show{display:flex}
+  .modal-box{width:min(760px,100%);background:#fff;border-radius:16px;padding:22px}
+  .modal-box label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
+  .modal-box input,.modal-box select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
+  .modal-box button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
+  .modal-box .btn-primary{background:var(--blue);color:#fff}
+  .modal-box .btn-light{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .modal-head .close{background:#eef2f7;padding:8px 11px;border:0;border-radius:10px;font-weight:700;cursor:pointer}
+  .modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .toast{position:fixed;right:24px;bottom:24px;background:#111827;color:#fff;padding:12px 16px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.25s;z-index:40}
+  .toast.show{opacity:1;transform:translateY(0)}
+  @media(max-width:1100px){.mvp-page .grid{grid-template-columns:repeat(3,1fr)}.mvp-page .stats{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:760px){.mvp-page .grid,.modal-grid{grid-template-columns:1fr}.mvp-page .stats{grid-template-columns:1fr}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
+</style>
+
+<div class="mvp-page">
+  <div class="page-head">
+    <div>
+      <h1>Doanh thu và giá vốn</h1>
+      <div class="sub">Nhập số liệu theo từng chiều vận chuyển. Giá vốn cũng chính là công nợ; hệ thống tự tính lãi gộp và tỷ suất.</div>
+    </div>
+    <div class="toolbar">
+      <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
+      <button class="btn-light" onclick="resetData()">Xóa toàn bộ</button>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="card-title">NHẬP DỮ LIỆU</div>
+    <div class="grid">
+      <div>
+        <label>Chọn chiều</label>
+        <select id="route"></select>
+      </div>
+      <div>
+        <label>Số kiện</label>
+        <input id="packages" type="number" min="0" placeholder="Ví dụ: 120">
+      </div>
+      <div>
+        <label>Số kg</label>
+        <input id="kg" type="number" min="0" step="0.01" placeholder="Ví dụ: 1.250">
+      </div>
+      <div>
+        <label>Doanh thu</label>
+        <input id="revenue" inputmode="numeric" placeholder="Ví dụ: 250.000.000">
+      </div>
+      <div>
+        <label>Giá vốn (Công nợ)</label>
+        <input id="cost" inputmode="numeric" placeholder="Ví dụ: 180.000.000">
+      </div>
+    </div>
+    <div style="margin-top:15px;display:flex;justify-content:flex-end">
+      <button class="btn-primary" onclick="addRecord()">+ Thêm dữ liệu</button>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
+    <div class="stat"><span>TỔNG GIÁ VỐN</span><strong id="sCost">0 đ</strong></div>
+    <div class="stat"><span>TỔNG LÃI GỘP</span><strong id="sProfit">0 đ</strong></div>
+    <div class="stat"><span>TỶ SUẤT LÃI GỘP</span><strong id="sMargin">0%</strong></div>
+  </section>
+
+  <section class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>CHIỀU VẬN CHUYỂN</th>
+            <th>SỐ KIỆN</th>
+            <th>SỐ KG</th>
+            <th>DOANH THU</th>
+            <th>GIÁ VỐN (CÔNG NỢ)</th>
+            <th>LÃI GỘP</th>
+            <th>TỶ SUẤT LÃI GỘP</th>
+            <th>THAO TÁC</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 style="margin:0">Sửa dữ liệu</h3>
+      <button class="close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-grid">
+      <div><label>Chiều vận chuyển</label><select id="eRoute"></select></div>
+      <div><label>Số kiện</label><input id="ePackages" type="number" min="0"></div>
+      <div><label>Số kg</label><input id="eKg" type="number" min="0" step="0.01"></div>
+      <div><label>Doanh thu</label><input id="eRevenue"></div>
+      <div><label>Giá vốn (Công nợ)</label><input id="eCost"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">
+      <button class="btn-light" onclick="closeModal()">Hủy</button>
+      <button class="btn-primary" onclick="saveEdit()">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Séc","Đức Việt","Hàng đông lạnh","Shopee"];
+const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
+const PAGE_RECORD_TYPE = "doanh-thu-gia-von";
+let records = [];
+let editId = null;
+
+const escapeHtml = value => String(value == null ? "" : value)
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
+
+async function requestJson(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Không thể lưu dữ liệu");
+  return payload;
+}
+async function loadRecords() {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
+  records = (payload.records || []).map(normalizeRecord);
+}
+async function createRecord(record) {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({record})
+  });
+  records.unshift(normalizeRecord(payload.record));
+}
+async function updateRecord(id, record) {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({record})
+  });
+  const updated = normalizeRecord(payload.record);
+  records = records.map(item => item.id === id ? updated : item);
+}
+async function removeRecord(id, actor, password) {
+  await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({actor, password})
+  });
+  records = records.filter(item => item.id !== id);
+}
+function normalizeRecord(record) {
+  return {
+    id: record.id,
+    route: routes.includes(record.route) ? record.route : routes[0],
+    packages: Number(record.packages) || 0,
+    kg: Number(record.kg) || 0,
+    revenue: Number(record.revenue) || 0,
+    cost: Number(record.cost) || 0,
+    createdAt: record.createdAt || ""
+  };
+}
+function fmt(n){return new Intl.NumberFormat("vi-VN").format(Number(n)||0)}
+function money(n){return fmt(n)+" đ"}
+function parseMoney(v){return Number(String(v).replace(/[^\d-]/g,""))||0}
+function profit(r){return r.revenue-r.cost}
+function margin(r){return r.revenue ? profit(r)/r.revenue*100 : 0}
+function setupRoutes(){
+  ["route","eRoute"].forEach(id=>{
+    document.getElementById(id).innerHTML = routes.map(r=>`<option>${r}</option>`).join("");
+  });
+}
+["revenue","cost","eRevenue","eCost"].forEach(id=>{
+  document.addEventListener("input",e=>{
+    if(e.target.id===id){
+      const raw=parseMoney(e.target.value);
+      e.target.value=raw?fmt(raw):"";
+    }
+  });
+});
+function render(){
+  const tb=document.getElementById("tbody");
+  if(!records.length){
+    tb.innerHTML=`<tr><td colspan="8" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
+  } else {
+    tb.innerHTML=records.map((r,i)=>`
+      <tr>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
+        <td>${fmt(r.packages)}</td>
+        <td>${fmt(r.kg)}</td>
+        <td class="money-revenue">${fmt(r.revenue)}</td>
+        <td class="money-cost">${fmt(r.cost)}</td>
+        <td class="money-profit">${fmt(profit(r))}</td>
+        <td class="margin">${margin(r).toFixed(2)}%</td>
+        <td><div class="row-actions">
+          <button class="edit" onclick="openEdit('${r.id}')">✎ Sửa</button>
+          <button class="delete" onclick="deleteRecord('${r.id}')">🗑 Xóa</button>
+        </div></td>
+      </tr>`).join("");
+  }
+  const total=records.reduce((a,r)=>({
+    packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,
+    cost:a.cost+r.cost
+  }),{packages:0,kg:0,revenue:0,cost:0});
+  const p=total.revenue-total.cost, m=total.revenue?p/total.revenue*100:0;
+  document.getElementById("tfoot").innerHTML=`
+    <tr><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
+    <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td><td class="money-profit">${fmt(p)}</td>
+    <td class="margin">${m.toFixed(2)}%</td><td></td></tr>`;
+  sRevenue.textContent=money(total.revenue); sCost.textContent=money(total.cost);
+  sProfit.textContent=money(p); sMargin.textContent=m.toFixed(2)+"%";
+}
+async function addRecord(){
+  const r={
+    route:route.value,packages:Number(packages.value)||0,
+    kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),cost:parseMoney(cost.value)
+  };
+  if(!r.packages&&!r.kg&&!r.revenue&&!r.cost){toast("Vui lòng nhập dữ liệu.");return}
+  try {
+    await createRecord(r);render();
+    ["packages","kg","revenue","cost"].forEach(id=>document.getElementById(id).value="");
+    toast("Đã thêm dữ liệu.");
+  } catch (error) {
+    toast(error.message);
+  }
+}
+function openEdit(id){
+  editId=id; const r=records.find(x=>x.id===id); if(!r)return;
+  eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;
+  eRevenue.value=fmt(r.revenue);eCost.value=fmt(r.cost);
+  modal.classList.add("show");
+}
+function closeModal(){modal.classList.remove("show");editId=null}
+async function saveEdit(){
+  const i=records.findIndex(x=>x.id===editId); if(i<0)return;
+  const updated={route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
+    revenue:parseMoney(eRevenue.value),cost:parseMoney(eCost.value)};
+  try {
+    await updateRecord(editId, updated);
+    render();closeModal();toast("Đã cập nhật dữ liệu.");
+  } catch (error) {
+    toast(error.message);
+  }
+}
+async function deleteRecord(id){
+  if(!confirm("Bạn chắc chắn muốn xóa dòng này?"))return;
+  const actor = prompt("Nhập tên người xoá");
+  if(actor === null) return;
+  if(!actor.trim()){toast("Vui lòng nhập tên người xoá.");return}
+  const password = prompt("Nhập mật khẩu xoá phiếu");
+  if(password === null) return;
+  try {
+    await removeRecord(id, actor, password);
+    render();toast("Đã xóa dữ liệu.");
+  } catch (error) {
+    toast(error.message);
+  }
+}
+async function resetData(){
+  if(!records.length){toast("Không có dữ liệu để xóa.");return}
+  if(!confirm("Xóa toàn bộ dữ liệu trên server cho trang này?"))return;
+  const actor = prompt("Nhập tên người xoá");
+  if(actor === null) return;
+  if(!actor.trim()){toast("Vui lòng nhập tên người xoá.");return}
+  const password = prompt("Nhập mật khẩu xoá phiếu");
+  if(password === null) return;
+  try {
+    const ids = records.map(record => record.id);
+    for (const id of ids) await removeRecord(id, actor, password);
+    render();toast("Đã xóa toàn bộ dữ liệu.");
+  } catch (error) {
+    render();toast(error.message);
+  }
+}
+function exportCSV(){
+  const rows=[["Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
+  records.forEach(r=>rows.push([r.route,r.packages,r.kg,r.revenue,r.cost,profit(r),margin(r).toFixed(2)+"%"]));
+  const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu-gia-von.csv";a.click();
+  URL.revokeObjectURL(a.href);
+}
+function toast(msg){
+  const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1800);
+}
+window.onclick=e=>{if(e.target===modal)closeModal()}
+async function init(){
+  setupRoutes();
+  render();
+  try {
+    await loadRecords();
+  } catch (error) {
+    toast(error.message);
+  }
+  render();
+}
+init();
+</script>

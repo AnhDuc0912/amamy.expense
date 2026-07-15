@@ -133,6 +133,46 @@ test('page records persist MVP form data by page', async function() {
   assert.equal(invalidPage.response.status, 404);
 });
 
+test('revenue cost page records can be updated', async function() {
+  var created = await jsonRequest('/api/page-records/doanh-thu-gia-von', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      record: {
+        route: 'Việt Nhật',
+        packages: 120,
+        kg: 1250,
+        revenue: 620000000,
+        cost: 580000000
+      }
+    })
+  });
+  assert.equal(created.response.status, 201);
+  assert.equal(created.body.record.route, 'Việt Nhật');
+
+  var updated = await jsonRequest('/api/page-records/doanh-thu-gia-von/' + created.body.record.id, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      record: {
+        route: 'Nhật Việt',
+        packages: 100,
+        kg: 980,
+        revenue: 180000000,
+        cost: 135000000
+      }
+    })
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.record.route, 'Nhật Việt');
+  assert.equal(updated.body.record.cost, 135000000);
+
+  var listed = await jsonRequest('/api/page-records/doanh-thu-gia-von');
+  assert.equal(listed.response.status, 200);
+  assert.equal(listed.body.records[0].id, created.body.record.id);
+  assert.equal(listed.body.records[0].revenue, 180000000);
+});
+
 test('store payment requires receipt and updates cash summary', async function() {
   var missingReceipt = await jsonRequest('/api/payments', {
     method: 'POST',

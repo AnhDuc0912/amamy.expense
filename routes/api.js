@@ -18,7 +18,8 @@ var materialRoute = 'Vật liệu';
 var pageRecordTypes = [
   'khieu-nai-den-bu',
   'chi-tieu-van-hanh',
-  'chi-tieu-noi-bo'
+  'chi-tieu-noi-bo',
+  'doanh-thu-gia-von'
 ];
 
 function currentMonth() {
@@ -256,6 +257,28 @@ router.post('/page-records/:page', async function(req, res, next) {
       data
     );
     res.status(201).json({ record: record });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/page-records/:page/:id', async function(req, res, next) {
+  try {
+    if (pageRecordTypes.indexOf(req.params.page) === -1) {
+      return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
+    }
+    if (!/^[a-f0-9]{24}$/.test(req.params.id)) {
+      return sendError(res, 400, 'Mã phiếu không hợp lệ');
+    }
+
+    var data = cleanPageRecordValue(req.body && req.body.record, 0);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return sendError(res, 400, 'Dữ liệu phiếu không hợp lệ');
+    }
+
+    var record = await store.updatePageRecord(req.params.page, req.params.id, data);
+    if (!record) return sendError(res, 404, 'Không tìm thấy phiếu');
+    res.json({ record: record });
   } catch (error) {
     next(error);
   }
