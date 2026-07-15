@@ -13,7 +13,10 @@
   .mvp-page .btn-light{background:#fff;border:1px solid var(--line);color:var(--ink)}
   .mvp-page .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.05);padding:20px;margin-bottom:18px}
   .mvp-page .card-title{font-size:18px;font-weight:800;color:#155ec5;margin-bottom:16px}
-  .mvp-page .grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:14px}
+  .mvp-page .grid{display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:14px}
+  .topFilters button{width:auto;margin:0}
+  .topFilters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+  .topFilterActions{min-width:0}
   .mvp-page label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
   .mvp-page input,.mvp-page select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
   .mvp-page input:focus,.mvp-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
@@ -22,7 +25,7 @@
   .mvp-page .stat span{font-size:12px;color:var(--muted);font-weight:700}
   .mvp-page .stat strong{display:block;font-size:22px;margin-top:8px}
   .mvp-page .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
-  .mvp-page table{width:100%;border-collapse:collapse;min-width:1120px;background:#fff}
+  .mvp-page table{width:100%;border-collapse:collapse;min-width:1220px;background:#fff}
   .mvp-page th,.mvp-page td{padding:13px 12px;border-bottom:1px solid #edf2f7;text-align:center;font-size:13px}
   .mvp-page th{background:#eef6ff;font-size:12px}
   .mvp-page td:first-child,.mvp-page th:first-child{text-align:left}
@@ -67,6 +70,10 @@
     <div class="card-title">NHẬP DỮ LIỆU</div>
     <div class="grid">
       <div>
+        <label>Ngày</label>
+        <input id="entryDate" type="date">
+      </div>
+      <div>
         <label>Chọn chiều</label>
         <select id="route"></select>
       </div>
@@ -99,11 +106,28 @@
     <div class="stat"><span>TỶ SUẤT LÃI GỘP</span><strong id="sMargin">0%</strong></div>
   </section>
 
+  <section class="topFilters" aria-label="Bộ lọc thời gian">
+    <label class="dateFilter monthFilter"><span>Tháng</span>
+      <input id="filterMonth" type="text" placeholder="Tất cả tháng" />
+    </label>
+    <label class="dateFilter"><span>Từ ngày</span>
+      <input id="filterDateFrom" type="text" placeholder="Chọn ngày" />
+    </label>
+    <label class="dateFilter"><span>Đến ngày</span>
+      <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+    </label>
+    <div class="filterActions topFilterActions">
+      <button id="applyDateFilter" type="button">Áp dụng</button>
+      <button id="clearDateFilter" type="button" class="filterClear">Xóa lọc</button>
+    </div>
+  </section>
+
   <section class="card" style="padding:0">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th>NGÀY</th>
             <th>CHIỀU VẬN CHUYỂN</th>
             <th>SỐ KIỆN</th>
             <th>SỐ KG</th>
@@ -128,6 +152,7 @@
       <button class="close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-grid">
+      <div><label>Ngày</label><input id="eDate" type="date"></div>
       <div><label>Chiều vận chuyển</label><select id="eRoute"></select></div>
       <div><label>Số kiện</label><input id="ePackages" type="number" min="0"></div>
       <div><label>Số kg</label><input id="eKg" type="number" min="0" step="0.01"></div>
@@ -143,12 +168,17 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
 const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Séc","Đức Việt","Hàng đông lạnh","Shopee"];
 const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
 const PAGE_RECORD_TYPE = "doanh-thu-gia-von";
 let records = [];
 let editId = null;
+let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+let datePickers = {};
 
 const escapeHtml = value => String(value == null ? "" : value)
   .replaceAll("&", "&amp;")
@@ -195,12 +225,57 @@ async function removeRecord(id, actor, password) {
 function normalizeRecord(record) {
   return {
     id: record.id,
+    date: record.date || "",
     route: routes.includes(record.route) ? record.route : routes[0],
     packages: Number(record.packages) || 0,
     kg: Number(record.kg) || 0,
     revenue: Number(record.revenue) || 0,
     cost: Number(record.cost) || 0,
     createdAt: record.createdAt || ""
+  };
+}
+function matchesDateFilter(dateStr) {
+  const iso = dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : null;
+  if (!iso) return true;
+  const { month, dateFrom, dateTo } = dateFilters;
+  if (dateFrom || dateTo) {
+    return (!dateFrom || iso >= dateFrom) && (!dateTo || iso <= dateTo);
+  }
+  if (month) return iso.slice(0, 7) === month;
+  return true;
+}
+function setupDateFilterPickers() {
+  if (typeof flatpickr !== "function") return;
+  const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
+  const commonDateOptions = { altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d", allowInput: true, locale, disableMobile: true };
+
+  if (typeof monthSelectPlugin === "function") {
+    datePickers.month = flatpickr(document.getElementById("filterMonth"), {
+      altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
+      onChange: function(selectedDates, value) {
+        dateFilters.month = value || "";
+        render();
+      }
+    });
+  }
+  datePickers.from = flatpickr(document.getElementById("filterDateFrom"), commonDateOptions);
+  datePickers.to = flatpickr(document.getElementById("filterDateTo"), commonDateOptions);
+
+  document.getElementById("applyDateFilter").onclick = function() {
+    dateFilters.dateFrom = document.getElementById("filterDateFrom").value;
+    dateFilters.dateTo = document.getElementById("filterDateTo").value;
+    render();
+  };
+  document.getElementById("clearDateFilter").onclick = function() {
+    document.getElementById("filterMonth").value = "";
+    document.getElementById("filterDateFrom").value = "";
+    document.getElementById("filterDateTo").value = "";
+    if (datePickers.month) datePickers.month.clear();
+    if (datePickers.from) datePickers.from.clear();
+    if (datePickers.to) datePickers.to.clear();
+    dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    render();
   };
 }
 function fmt(n){return new Intl.NumberFormat("vi-VN").format(Number(n)||0)}
@@ -223,11 +298,13 @@ function setupRoutes(){
 });
 function render(){
   const tb=document.getElementById("tbody");
-  if(!records.length){
-    tb.innerHTML=`<tr><td colspan="8" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
+  const filtered=records.filter(r=>matchesDateFilter(r.date));
+  if(!filtered.length){
+    tb.innerHTML=`<tr><td colspan="9" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
   } else {
-    tb.innerHTML=records.map((r,i)=>`
+    tb.innerHTML=filtered.map((r,i)=>`
       <tr>
+        <td>${escapeHtml(r.date)}</td>
         <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
         <td>${fmt(r.packages)}</td>
         <td>${fmt(r.kg)}</td>
@@ -241,13 +318,13 @@ function render(){
         </div></td>
       </tr>`).join("");
   }
-  const total=records.reduce((a,r)=>({
+  const total=filtered.reduce((a,r)=>({
     packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,
     cost:a.cost+r.cost
   }),{packages:0,kg:0,revenue:0,cost:0});
   const p=total.revenue-total.cost, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
-    <tr><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
+    <tr><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
     <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td><td class="money-profit">${fmt(p)}</td>
     <td class="margin">${m.toFixed(2)}%</td><td></td></tr>`;
   sRevenue.textContent=money(total.revenue); sCost.textContent=money(total.cost);
@@ -255,7 +332,7 @@ function render(){
 }
 async function addRecord(){
   const r={
-    route:route.value,packages:Number(packages.value)||0,
+    date:entryDate.value,route:route.value,packages:Number(packages.value)||0,
     kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),cost:parseMoney(cost.value)
   };
   if(!r.packages&&!r.kg&&!r.revenue&&!r.cost){toast("Vui lòng nhập dữ liệu.");return}
@@ -269,14 +346,14 @@ async function addRecord(){
 }
 function openEdit(id){
   editId=id; const r=records.find(x=>x.id===id); if(!r)return;
-  eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;
+  eDate.value=r.date;eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;
   eRevenue.value=fmt(r.revenue);eCost.value=fmt(r.cost);
   modal.classList.add("show");
 }
 function closeModal(){modal.classList.remove("show");editId=null}
 async function saveEdit(){
   const i=records.findIndex(x=>x.id===editId); if(i<0)return;
-  const updated={route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
+  const updated={date:eDate.value,route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
     revenue:parseMoney(eRevenue.value),cost:parseMoney(eCost.value)};
   try {
     await updateRecord(editId, updated);
@@ -316,8 +393,8 @@ async function resetData(){
   }
 }
 function exportCSV(){
-  const rows=[["Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
-  records.forEach(r=>rows.push([r.route,r.packages,r.kg,r.revenue,r.cost,profit(r),margin(r).toFixed(2)+"%"]));
+  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
+  records.filter(r=>matchesDateFilter(r.date)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,profit(r),margin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu-gia-von.csv";a.click();
@@ -329,7 +406,9 @@ function toast(msg){
 }
 window.onclick=e=>{if(e.target===modal)closeModal()}
 async function init(){
+  entryDate.valueAsDate = new Date();
   setupRoutes();
+  setupDateFilterPickers();
   render();
   try {
     await loadRecords();

@@ -43,6 +43,9 @@
     .preview { margin-top:14px; padding:12px; border-radius:10px; background:#f8fafc; border:1px dashed #cbd5e1; font-size:14px; }
     .preview strong { color:#2563eb; }
     .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .topFilters button { width:auto; margin:0; }
+    .topFilters { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
+    .topFilterActions { min-width:0; }
     @media (max-width:1200px) {
       .wrap { grid-template-columns:minmax(0, 1fr); }
       .summary { grid-template-columns:repeat(2,1fr); }
@@ -158,6 +161,22 @@
       <div class="box"><span>Thuế / BHXH</span><strong id="sumTax">0 đ</strong></div>
     </div>
 
+    <section class="topFilters" aria-label="Bộ lọc thời gian" style="margin-bottom:14px;">
+      <label class="dateFilter monthFilter"><span>Tháng</span>
+        <input id="filterMonth" type="text" placeholder="Tất cả tháng" />
+      </label>
+      <label class="dateFilter"><span>Từ ngày</span>
+        <input id="filterDateFrom" type="text" placeholder="Chọn ngày" />
+      </label>
+      <label class="dateFilter"><span>Đến ngày</span>
+        <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+      </label>
+      <div class="filterActions topFilterActions">
+        <button id="applyDateFilter" type="button">Áp dụng</button>
+        <button id="clearDateFilter" type="button" class="filterClear">Xóa lọc</button>
+      </div>
+    </section>
+
     <section class="card" style="margin-bottom:14px;">
       <h2>Bộ lọc</h2>
       <div class="filters">
@@ -229,6 +248,9 @@
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
 const categories = [
   "Thuê mặt bằng HCM",
@@ -248,6 +270,8 @@ const categories = [
 
 const PAGE_RECORD_TYPE = "chi-tieu-van-hanh";
 let records = [];
+let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+let datePickers = {};
 
 const escapeHtml = value => String(value == null ? "" : value)
   .replaceAll("&", "&amp;")
@@ -311,6 +335,52 @@ function formatMoneyInput(input) {
 }
 function money(n) { return Number(n || 0).toLocaleString("vi-VN") + " đ"; }
 
+function matchesDateFilter(dateStr) {
+  const iso = dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : null;
+  if (!iso) return true;
+  const { month, dateFrom, dateTo } = dateFilters;
+  if (dateFrom || dateTo) {
+    return (!dateFrom || iso >= dateFrom) && (!dateTo || iso <= dateTo);
+  }
+  if (month) return iso.slice(0, 7) === month;
+  return true;
+}
+
+function setupDateFilterPickers() {
+  if (typeof flatpickr !== "function") return;
+  const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
+  const commonDateOptions = { altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d", allowInput: true, locale, disableMobile: true };
+
+  if (typeof monthSelectPlugin === "function") {
+    datePickers.month = flatpickr(document.getElementById("filterMonth"), {
+      altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
+      onChange: function(selectedDates, value) {
+        dateFilters.month = value || "";
+        renderTable();
+      }
+    });
+  }
+  datePickers.from = flatpickr(document.getElementById("filterDateFrom"), commonDateOptions);
+  datePickers.to = flatpickr(document.getElementById("filterDateTo"), commonDateOptions);
+
+  document.getElementById("applyDateFilter").onclick = function() {
+    dateFilters.dateFrom = document.getElementById("filterDateFrom").value;
+    dateFilters.dateTo = document.getElementById("filterDateTo").value;
+    renderTable();
+  };
+  document.getElementById("clearDateFilter").onclick = function() {
+    document.getElementById("filterMonth").value = "";
+    document.getElementById("filterDateFrom").value = "";
+    document.getElementById("filterDateTo").value = "";
+    if (datePickers.month) datePickers.month.clear();
+    if (datePickers.from) datePickers.from.clear();
+    if (datePickers.to) datePickers.to.clear();
+    dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    renderTable();
+  };
+}
+
 function getGroup(category) {
   if (category.includes("Thuê mặt bằng")) return "Mặt bằng";
   if (["Chi tiêu bảo hiểm xã hội","Phí thuế thu nhập doanh nghiệp","Thuế môn bài","Thuế GTGT"].includes(category)) return "Thuế / BHXH";
@@ -352,6 +422,7 @@ async function init() {
   const filterCategory = document.getElementById("filterCategory");
   categories.forEach(c => filterCategory.appendChild(new Option(c,c)));
   renderForm();
+  setupDateFilterPickers();
   try {
     await loadRecords();
   } catch (error) {
@@ -431,7 +502,8 @@ function renderTable() {
     (!fs || r.status === fs) &&
     (!fcreator || r.creator === fcreator) &&
     (!fp || r.payment === fp) &&
-    (!fg || r.group === fg)
+    (!fg || r.group === fg) &&
+    matchesDateFilter(r.date)
   );
 
   document.getElementById("tbody").innerHTML = filtered.map(r => `
