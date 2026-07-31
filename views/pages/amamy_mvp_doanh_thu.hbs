@@ -20,15 +20,16 @@
   .mvp-page label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
   .mvp-page input,.mvp-page select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
   .mvp-page input:focus,.mvp-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
-  .mvp-page .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .mvp-page .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}
   .mvp-page .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
   .mvp-page .stat span{font-size:12px;color:var(--muted);font-weight:700}
   .mvp-page .stat strong{display:block;font-size:22px;margin-top:8px}
   .mvp-page .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
-  .mvp-page table{width:100%;border-collapse:collapse;min-width:1900px;background:#fff}
+  .mvp-page table{width:100%;border-collapse:collapse;min-width:2200px;background:#fff}
   .mvp-page th,.mvp-page td{padding:13px 12px;border-bottom:1px solid #edf2f7;text-align:center;font-size:13px}
   .mvp-page th{background:#eef6ff;font-size:12px}
-  .mvp-page td:first-child,.mvp-page th:first-child{text-align:left}
+  .mvp-page td:nth-child(2),.mvp-page th:nth-child(2){text-align:left}
+  .mvp-page .select-col{width:40px}
   .mvp-page .money-revenue{color:#2563eb;font-weight:800}
   .mvp-page .money-debt,.mvp-page .money-cost{color:var(--orange);font-weight:800}
   .mvp-page .money-profit,.mvp-page .margin{color:var(--green);font-weight:800}
@@ -62,6 +63,7 @@
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
+      <button class="btn-light" id="bulkDeleteBtn" onclick="bulkDelete()">🗑 Xóa đã chọn</button>
       <button class="btn-light" onclick="resetData()">Xóa toàn bộ</button>
     </div>
   </div>
@@ -88,6 +90,10 @@
       <div>
         <label>Doanh thu</label>
         <input id="revenue" inputmode="numeric" placeholder="Ví dụ: 250.000.000">
+      </div>
+      <div>
+        <label>Giá vốn (Công nợ)</label>
+        <input id="cost" inputmode="numeric" placeholder="Ví dụ: 180.000.000">
       </div>
       <div>
         <label>Ads</label>
@@ -129,9 +135,10 @@
 
   <section class="stats">
     <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
+    <div class="stat"><span>TỔNG GIÁ VỐN</span><strong id="sCostOfGoods">0 đ</strong></div>
     <div class="stat"><span>TỔNG CHI PHÍ</span><strong id="sCost">0 đ</strong></div>
-    <div class="stat"><span>CHÊNH LỆCH</span><strong id="sProfit">0 đ</strong></div>
-    <div class="stat"><span>TỶ LỆ CHI PHÍ/DOANH THU</span><strong id="sMargin">0%</strong></div>
+    <div class="stat"><span>LÃI HOẠT ĐỘNG</span><strong id="sProfit">0 đ</strong></div>
+    <div class="stat"><span>TỈ SUẤT LÃI HOẠT ĐỘNG</span><strong id="sMargin">0%</strong></div>
   </section>
 
   <section class="topFilters" aria-label="Bộ lọc thời gian">
@@ -155,11 +162,13 @@
       <table>
         <thead>
           <tr>
+            <th class="select-col"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)"></th>
             <th>NGÀY</th>
             <th>CHIỀU VẬN CHUYỂN</th>
             <th>SỐ KIỆN</th>
             <th>SỐ KG</th>
             <th>DOANH THU</th>
+            <th>GIÁ VỐN (CÔNG NỢ)</th>
             <th>ADS</th>
             <th>MARKETING</th>
             <th>ĐỀN BÙ</th>
@@ -169,7 +178,8 @@
             <th>NV PHỤ TRÁCH</th>
             <th>CHI PHÍ KHÁC</th>
             <th>TỔNG CHI PHÍ</th>
-            <th>CHÊNH LỆCH</th>
+            <th>LÃI HOẠT ĐỘNG</th>
+            <th>TỈ SUẤT LÃI HOẠT ĐỘNG</th>
             <th>THAO TÁC</th>
           </tr>
         </thead>
@@ -192,6 +202,7 @@
       <div><label>Số kiện</label><input id="ePackages" type="number" min="0"></div>
       <div><label>Số kg</label><input id="eKg" type="number" min="0" step="0.01"></div>
       <div><label>Doanh thu</label><input id="eRevenue"></div>
+      <div><label>Giá vốn (Công nợ)</label><input id="eCost"></div>
       <div><label>Ads</label><input id="eAds"></div>
       <div><label>Marketing</label><input id="eMarketing"></div>
       <div><label>Đền bù</label><input id="eCompensation"></div>
@@ -222,6 +233,7 @@ let records = [];
 let editId = null;
 let dateFilters = { month: "", dateFrom: "", dateTo: "" };
 let datePickers = {};
+let selectedIds = new Set();
 
 const escapeHtml = value => String(value == null ? "" : value)
   .replaceAll("&", "&amp;")
@@ -273,6 +285,7 @@ function normalizeRecord(record) {
     packages: Number(record.packages) || 0,
     kg: Number(record.kg) || 0,
     revenue: Number(record.revenue) || 0,
+    cost: Number(record.cost) || 0,
     staffInCharge: record.staffInCharge || "",
     createdAt: record.createdAt || ""
   };
@@ -327,13 +340,14 @@ function fmt(n){return new Intl.NumberFormat("vi-VN").format(Number(n)||0)}
 function money(n){return fmt(n)+" đ"}
 function parseMoney(v){return Number(String(v).replace(/[^\d-]/g,""))||0}
 function totalCost(r){return costFields.reduce((sum,f)=>sum+r[f],0)}
-function net(r){return r.revenue-totalCost(r)}
+function operatingProfit(r){return r.revenue-r.cost-totalCost(r)}
+function operatingMargin(r){return r.revenue ? operatingProfit(r)/r.revenue*100 : 0}
 function setupRoutes(){
   ["route","eRoute"].forEach(id=>{
     document.getElementById(id).innerHTML = routes.map(r=>`<option>${r}</option>`).join("");
   });
 }
-const moneyInputIds = ["revenue","eRevenue",
+const moneyInputIds = ["revenue","cost","eRevenue","eCost",
   ...costFields,
   ...costFields.map(f=>"e"+f[0].toUpperCase()+f.slice(1))];
 moneyInputIds.forEach(id=>{
@@ -348,15 +362,17 @@ function render(){
   const tb=document.getElementById("tbody");
   const filtered=records.filter(r=>matchesDateFilter(r.date));
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="16" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="19" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>`
       <tr>
+        <td class="select-col"><input type="checkbox" class="rowCheckbox" onchange="toggleSelectRow('${r.id}', this.checked)" ${selectedIds.has(r.id)?"checked":""}></td>
         <td>${escapeHtml(r.date)}</td>
         <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
         <td>${fmt(r.packages)}</td>
         <td>${fmt(r.kg)}</td>
         <td class="money-revenue">${fmt(r.revenue)}</td>
+        <td class="money-cost">${fmt(r.cost)}</td>
         <td class="money-cost">${fmt(r.ads)}</td>
         <td class="money-cost">${fmt(r.marketing)}</td>
         <td class="money-cost">${fmt(r.compensation)}</td>
@@ -366,7 +382,8 @@ function render(){
         <td>${escapeHtml(r.staffInCharge)}</td>
         <td class="money-cost">${fmt(r.otherCost)}</td>
         <td class="money-cost">${fmt(totalCost(r))}</td>
-        <td class="money-profit">${fmt(net(r))}</td>
+        <td class="money-profit">${fmt(operatingProfit(r))}</td>
+        <td class="margin">${operatingMargin(r).toFixed(2)}%</td>
         <td><div class="row-actions">
           <button class="edit" onclick="openEdit('${r.id}')">✎ Sửa</button>
           <button class="delete" onclick="deleteRecord('${r.id}')">🗑 Xóa</button>
@@ -374,35 +391,57 @@ function render(){
       </tr>`).join("");
   }
   const total=filtered.reduce((a,r)=>({
-    packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,
+    packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,cost:a.cost+r.cost,
     ads:a.ads+r.ads,marketing:a.marketing+r.marketing,compensation:a.compensation+r.compensation,
     discount:a.discount+r.discount,domesticShipping:a.domesticShipping+r.domesticShipping,
     intlShipping:a.intlShipping+r.intlShipping,otherCost:a.otherCost+r.otherCost
-  }),{packages:0,kg:0,revenue:0,ads:0,marketing:0,compensation:0,discount:0,domesticShipping:0,intlShipping:0,otherCost:0});
+  }),{packages:0,kg:0,revenue:0,cost:0,ads:0,marketing:0,compensation:0,discount:0,domesticShipping:0,intlShipping:0,otherCost:0});
   const totalCostSum = costFields.reduce((sum,f)=>sum+total[f],0);
-  const p=total.revenue-totalCostSum, m=total.revenue?totalCostSum/total.revenue*100:0;
+  const p=total.revenue-total.cost-totalCostSum, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
-    <tr><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
-    <td class="money-revenue">${fmt(total.revenue)}</td>
+    <tr><td></td><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
+    <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td>
     <td class="money-cost">${fmt(total.ads)}</td><td class="money-cost">${fmt(total.marketing)}</td>
     <td class="money-cost">${fmt(total.compensation)}</td><td class="money-cost">${fmt(total.discount)}</td>
     <td class="money-cost">${fmt(total.domesticShipping)}</td><td class="money-cost">${fmt(total.intlShipping)}</td>
     <td></td><td class="money-cost">${fmt(total.otherCost)}</td>
     <td class="money-cost">${fmt(totalCostSum)}</td>
-    <td class="money-profit">${fmt(p)}</td><td></td></tr>`;
-  sRevenue.textContent=money(total.revenue); sCost.textContent=money(totalCostSum);
+    <td class="money-profit">${fmt(p)}</td><td class="margin">${m.toFixed(2)}%</td><td></td></tr>`;
+  sRevenue.textContent=money(total.revenue); sCostOfGoods.textContent=money(total.cost);
+  sCost.textContent=money(totalCostSum);
   sProfit.textContent=money(p); sMargin.textContent=m.toFixed(2)+"%";
+  updateSelectionUI(filtered);
+}
+function toggleSelectRow(id, checked){
+  if(checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateSelectionUI(records.filter(r=>matchesDateFilter(r.date)));
+}
+function toggleSelectAll(checked){
+  records.filter(r=>matchesDateFilter(r.date)).forEach(r=>{
+    if(checked) selectedIds.add(r.id); else selectedIds.delete(r.id);
+  });
+  render();
+}
+function updateSelectionUI(filtered){
+  const selectedCount = filtered.filter(r=>selectedIds.has(r.id)).length;
+  const btn = document.getElementById("bulkDeleteBtn");
+  if(btn) btn.textContent = selectedCount ? `🗑 Xóa đã chọn (${selectedCount})` : "🗑 Xóa đã chọn";
+  const selectAll = document.getElementById("selectAllCheckbox");
+  if(selectAll){
+    selectAll.checked = filtered.length>0 && selectedCount===filtered.length;
+    selectAll.indeterminate = selectedCount>0 && selectedCount<filtered.length;
+  }
 }
 async function addRecord(){
   const r={
     date:entryDate.value,route:route.value,packages:Number(packages.value)||0,
-    kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),staffInCharge:staffInCharge.value.trim()
+    kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),cost:parseMoney(cost.value),staffInCharge:staffInCharge.value.trim()
   };
   costFields.forEach(f=>r[f]=parseMoney(document.getElementById(f).value));
-  if(!r.packages&&!r.kg&&!r.revenue&&!totalCost(r)){toast("Vui lòng nhập dữ liệu.");return}
+  if(!r.packages&&!r.kg&&!r.revenue&&!r.cost&&!totalCost(r)){toast("Vui lòng nhập dữ liệu.");return}
   try {
     await createRecord(r);render();
-    ["packages","kg","revenue","staffInCharge",...costFields].forEach(id=>document.getElementById(id).value="");
+    ["packages","kg","revenue","cost","staffInCharge",...costFields].forEach(id=>document.getElementById(id).value="");
     toast("Đã thêm dữ liệu.");
   } catch (error) {
     toast(error.message);
@@ -411,7 +450,7 @@ async function addRecord(){
 function openEdit(id){
   editId=id; const r=records.find(x=>x.id===id); if(!r)return;
   eDate.value=r.date;eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;
-  eRevenue.value=fmt(r.revenue);eStaffInCharge.value=r.staffInCharge;
+  eRevenue.value=fmt(r.revenue);eCost.value=fmt(r.cost);eStaffInCharge.value=r.staffInCharge;
   costFields.forEach(f=>{
     document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value=fmt(r[f]);
   });
@@ -421,7 +460,7 @@ function closeModal(){modal.classList.remove("show");editId=null}
 async function saveEdit(){
   const i=records.findIndex(x=>x.id===editId); if(i<0)return;
   const updated={date:eDate.value,route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
-    revenue:parseMoney(eRevenue.value),staffInCharge:eStaffInCharge.value.trim()};
+    revenue:parseMoney(eRevenue.value),cost:parseMoney(eCost.value),staffInCharge:eStaffInCharge.value.trim()};
   costFields.forEach(f=>{
     updated[f]=parseMoney(document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value);
   });
@@ -441,9 +480,31 @@ async function deleteRecord(id){
   if(password === null) return;
   try {
     await removeRecord(id, actor, password);
+    selectedIds.delete(id);
     render();toast("Đã xóa dữ liệu.");
   } catch (error) {
     toast(error.message);
+  }
+}
+async function bulkDelete(){
+  const ids = records.filter(r=>selectedIds.has(r.id)).map(r=>r.id);
+  if(!ids.length){toast("Vui lòng chọn ít nhất một dòng để xóa.");return}
+  if(!confirm(`Xóa ${ids.length} dòng đã chọn?`))return;
+  const actor = prompt("Nhập tên người xoá");
+  if(actor === null) return;
+  if(!actor.trim()){toast("Vui lòng nhập tên người xoá.");return}
+  const password = prompt("Nhập mật khẩu xoá phiếu");
+  if(password === null) return;
+  let success=0;
+  try {
+    for (const id of ids) {
+      await removeRecord(id, actor, password);
+      selectedIds.delete(id);
+      success++;
+    }
+    render();toast(`Đã xóa ${success} dòng đã chọn.`);
+  } catch (error) {
+    render();toast(error.message);
   }
 }
 async function resetData(){
@@ -457,14 +518,15 @@ async function resetData(){
   try {
     const ids = records.map(record => record.id);
     for (const id of ids) await removeRecord(id, actor, password);
+    selectedIds.clear();
     render();toast("Đã xóa toàn bộ dữ liệu.");
   } catch (error) {
     render();toast(error.message);
   }
 }
 function exportCSV(){
-  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Ads","Marketing","Đền bù","Ưu đãi","Phí VC trong nước","VC nước ngoài","NV phụ trách","Chi phí khác","Tổng chi phí","Chênh lệch"]];
-  records.filter(r=>matchesDateFilter(r.date)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.ads,r.marketing,r.compensation,r.discount,r.domesticShipping,r.intlShipping,r.staffInCharge,r.otherCost,totalCost(r),net(r)]));
+  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Ads","Marketing","Đền bù","Ưu đãi","Phí VC trong nước","VC nước ngoài","NV phụ trách","Chi phí khác","Tổng chi phí","Lãi hoạt động","Tỉ suất lãi hoạt động"]];
+  records.filter(r=>matchesDateFilter(r.date)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.domesticShipping,r.intlShipping,r.staffInCharge,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu.csv";a.click();

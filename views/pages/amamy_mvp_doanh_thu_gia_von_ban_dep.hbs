@@ -445,7 +445,7 @@ async function pushToDoanhThuPage(){
       await requestJson("/api/page-records/doanh-thu", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({record:{date:r.date,route:r.route,packages:r.packages,kg:r.kg,revenue:r.revenue}})
+        body:JSON.stringify({record:{date:r.date,route:r.route,packages:r.packages,kg:r.kg,revenue:r.revenue,cost:r.cost}})
       });
       selectedIds.delete(r.id);
       success++;

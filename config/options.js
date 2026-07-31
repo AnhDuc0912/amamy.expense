@@ -14,7 +14,8 @@ module.exports = {
     'Đức Việt',
     'Mỹ Việt',
     'Hàng đông lạnh',
-    'Vật liệu'
+    'Vật liệu',
+    'Phí vận hành',
   ],
   categories: [
     'Phí ship đối tác',
