@@ -2,6 +2,14 @@ var express = require('express');
 var crypto = require('crypto');
 var options = require('../config/options');
 var store = require('../services/store');
+var doanhThuAccess = require('../services/doanhThuAccess');
+
+var DOANH_THU_COOKIE = 'doanhThuAccess';
+
+function requiresDoanhThuAuth(page, req) {
+  return page === 'doanh-thu' &&
+    !doanhThuAccess.isValid(req.cookies && req.cookies[DOANH_THU_COOKIE]);
+}
 
 var router = express.Router();
 var allowedMimeTypes = [
@@ -233,6 +241,9 @@ router.get('/page-records/:page', async function(req, res, next) {
     if (pageRecordTypes.indexOf(req.params.page) === -1) {
       return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
     }
+    if (requiresDoanhThuAuth(req.params.page, req)) {
+      return sendError(res, 403, 'Cần đăng nhập trang Doanh thu');
+    }
 
     var records = await store.listPageRecords(req.params.page);
     res.json({ records: records });
@@ -245,6 +256,9 @@ router.post('/page-records/:page', async function(req, res, next) {
   try {
     if (pageRecordTypes.indexOf(req.params.page) === -1) {
       return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
+    }
+    if (requiresDoanhThuAuth(req.params.page, req)) {
+      return sendError(res, 403, 'Cần đăng nhập trang Doanh thu');
     }
 
     var data = cleanPageRecordValue(req.body && req.body.record, 0);
@@ -268,6 +282,9 @@ router.put('/page-records/:page/:id', async function(req, res, next) {
     if (pageRecordTypes.indexOf(req.params.page) === -1) {
       return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
     }
+    if (requiresDoanhThuAuth(req.params.page, req)) {
+      return sendError(res, 403, 'Cần đăng nhập trang Doanh thu');
+    }
     if (!/^[a-f0-9]{24}$/.test(req.params.id)) {
       return sendError(res, 400, 'Mã phiếu không hợp lệ');
     }
@@ -289,6 +306,9 @@ router.delete('/page-records/:page/:id', async function(req, res, next) {
   try {
     if (pageRecordTypes.indexOf(req.params.page) === -1) {
       return sendError(res, 404, 'Trang lưu dữ liệu không hợp lệ');
+    }
+    if (requiresDoanhThuAuth(req.params.page, req)) {
+      return sendError(res, 403, 'Cần đăng nhập trang Doanh thu');
     }
     if (!/^[a-f0-9]{24}$/.test(req.params.id)) {
       return sendError(res, 400, 'Mã phiếu không hợp lệ');

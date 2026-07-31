@@ -1,0 +1,18 @@
+<style>
+  .doanhThuLogin{max-width:420px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:32px;box-shadow:0 8px 24px rgba(15,23,42,.05);text-align:center}
+  .doanhThuLogin h1{font-size:22px;margin:0 0 8px}
+  .doanhThuLogin p{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .doanhThuLogin input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:9px;font-size:16px;text-align:center;letter-spacing:2px;margin-bottom:14px;outline:none;box-sizing:border-box}
+  .doanhThuLogin input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
+  .doanhThuLogin button{width:100%;border:0;border-radius:10px;padding:12px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff;font-size:15px}
+  .doanhThuLogin .error{color:var(--red);font-size:13px;margin-bottom:14px}
+</style>
+<div class="doanhThuLogin">
+  <h1>Trang Doanh thu</h1>
+  <p>Vui lòng nhập mật khẩu để truy cập trang này.</p>
+  {{#if error}}<div class="error">{{error}}</div>{{/if}}
+  <form method="POST" action="/doanh-thu/login">
+    <input type="password" name="password" placeholder="Mật khẩu" autofocus required>
+    <button type="submit">Vào trang</button>
+  </form>
+</div>
