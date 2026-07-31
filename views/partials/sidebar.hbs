@@ -18,5 +18,14 @@
     <p>HN: <b id="sideHn">0 đ</b></p>
     <p>HCM: <b id="sideHcm">0 đ</b></p>
     <p>Công ty đã chi: <b id="sideCompany">0 đ</b></p>
+    <p>Doanh thu: <b id="sideRevenue">0 đ</b></p>
   </div>
 </aside>
+<script>
+  (function() {
+    var el = document.getElementById('sideRevenue');
+    if (!el) return;
+    var raw = Number(localStorage.getItem('amamyQuickRevenue')) || 0;
+    el.textContent = new Intl.NumberFormat('vi-VN').format(raw) + ' đ';
+  })();
+</script>
