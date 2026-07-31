@@ -38,4 +38,11 @@ router.get('/doanh-thu-gia-von', function(req, res) {
   });
 });
 
+router.get('/doanh-thu', function(req, res) {
+  res.render('pages/amamy_mvp_doanh_thu', {
+    title: 'Amamy - Doanh thu',
+    navDoanhThuChiTiet: true
+  });
+});
+
 module.exports = router;
