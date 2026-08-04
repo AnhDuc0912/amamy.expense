@@ -32,7 +32,7 @@
     .box strong { font-size:18px; }
     .filters { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px; }
     .tableScroll { max-width:100%; overflow-x:auto; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.08); }
-    table { width:100%; min-width:1100px; border-collapse:collapse; background:white; overflow:hidden; }
+    table { width:100%; min-width:1100px; border-collapse:collapse; background:#f7f8fa; overflow:hidden; }
     th, td { padding:11px 9px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:13px; vertical-align:top; }
     th { background:#f8fafc; color:#334155; }
     .badge { padding:5px 9px; border-radius:999px; font-weight:700; font-size:12px; display:inline-block; }
@@ -90,6 +90,7 @@
       <option>Tiền nước</option>
       <option>Thuê HR bên thứ 3 tuyển dụng</option>
       <option>Thuê IT bên thứ 3</option>
+      <option>Chi phí vận chuyển Viettel Post</option>
       <option>Chi phí khác</option>
     </select>
 
@@ -219,6 +220,7 @@
           <option>Nhân sự</option>
           <option>Điện nước</option>
           <option>Thuê ngoài</option>
+          <option>Vận chuyển</option>
           <option>Khác</option>
         </select>
       </div>
@@ -265,6 +267,7 @@ const categories = [
   "Tiền nước",
   "Thuê HR bên thứ 3 tuyển dụng",
   "Thuê IT bên thứ 3",
+  "Chi phí vận chuyển Viettel Post",
   "Chi phí khác"
 ];
 
@@ -387,6 +390,7 @@ function getGroup(category) {
   if (["Lương nhân viên","Liên hoan nhân viên"].includes(category)) return "Nhân sự";
   if (["Tiền điện","Tiền nước"].includes(category)) return "Điện nước";
   if (["Thuê HR bên thứ 3 tuyển dụng","Thuê IT bên thứ 3"].includes(category)) return "Thuê ngoài";
+  if (category === "Chi phí vận chuyển Viettel Post") return "Vận chuyển";
   return "Khác";
 }
 

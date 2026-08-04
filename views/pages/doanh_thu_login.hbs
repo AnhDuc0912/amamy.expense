@@ -8,10 +8,11 @@
   .doanhThuLogin .error{color:var(--red);font-size:13px;margin-bottom:14px}
 </style>
 <div class="doanhThuLogin">
-  <h1>Trang Doanh thu</h1>
+  <h1>Trang {{pageLabel}}</h1>
   <p>Vui lòng nhập mật khẩu để truy cập trang này.</p>
   {{#if error}}<div class="error">{{error}}</div>{{/if}}
   <form method="POST" action="/doanh-thu/login">
+    <input type="hidden" name="redirect" value="{{redirectPath}}">
     <input type="password" name="password" placeholder="Mật khẩu" autofocus required>
     <button type="submit">Vào trang</button>
   </form>

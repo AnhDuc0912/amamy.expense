@@ -29,7 +29,7 @@
   .mvp-page .stat-push span{color:var(--blue)}
   .mvp-page .stat-push strong{color:var(--ink);font-size:15px}
   .mvp-page .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
-  .mvp-page table{width:100%;border-collapse:collapse;min-width:1220px;background:#fff}
+  .mvp-page table{width:100%;border-collapse:collapse;min-width:1220px;background:#f7f8fa}
   .mvp-page th,.mvp-page td{padding:13px 12px;border-bottom:1px solid #edf2f7;text-align:center;font-size:13px}
   .mvp-page th{background:#eef6ff;font-size:12px}
   .mvp-page td:nth-child(2),.mvp-page th:nth-child(2){text-align:left}
@@ -37,6 +37,7 @@
   .mvp-page .money-revenue{color:#2563eb;font-weight:800}
   .mvp-page .money-debt,.mvp-page .money-cost{color:var(--orange);font-weight:800}
   .mvp-page .money-profit,.mvp-page .margin{color:var(--green);font-weight:800}
+  .mvp-page .money-profit.negative,.mvp-page .margin.negative{color:var(--red)}
   .mvp-page .row-actions{display:flex;justify-content:center;gap:7px}
   .mvp-page .edit{color:#2563eb;border:1px solid #93c5fd;background:#eff6ff;padding:7px 10px}
   .mvp-page .delete{color:var(--red);border:1px solid #fca5a5;background:#fff1f2;padding:7px 10px}
@@ -68,6 +69,7 @@
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
       <button class="btn-light" onclick="resetData()">Xóa toàn bộ</button>
+      <a class="btn-light" style="display:inline-flex;align-items:center;text-decoration:none" href="/doanh-thu/logout?redirect=/doanh-thu-gia-von">Đăng xuất</a>
     </div>
   </div>
 
@@ -115,7 +117,7 @@
     </button>
   </section>
 
-  <section class="topFilters" aria-label="Bộ lọc thời gian">
+  <section class="topFilters" aria-label="Bộ lọc thời gian và chiều vận chuyển">
     <label class="dateFilter monthFilter"><span>Tháng</span>
       <input id="filterMonth" type="text" placeholder="Tất cả tháng" />
     </label>
@@ -124,6 +126,9 @@
     </label>
     <label class="dateFilter"><span>Đến ngày</span>
       <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+    </label>
+    <label class="dateFilter"><span>Chiều vận chuyển</span>
+      <select id="filterRoute"><option value="">Tất cả chiều</option></select>
     </label>
     <div class="filterActions topFilterActions">
       <button id="applyDateFilter" type="button">Áp dụng</button>
@@ -188,6 +193,7 @@ const PAGE_RECORD_TYPE = "doanh-thu-gia-von";
 let records = [];
 let editId = null;
 let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+let routeFilter = "";
 let datePickers = {};
 let selectedIds = new Set();
 
@@ -255,6 +261,12 @@ function matchesDateFilter(dateStr) {
   if (month) return iso.slice(0, 7) === month;
   return true;
 }
+function matchesRouteFilter(route) {
+  return !routeFilter || route === routeFilter;
+}
+function matchesFilters(r) {
+  return matchesDateFilter(r.date) && matchesRouteFilter(r.route);
+}
 function setupDateFilterPickers() {
   if (typeof flatpickr !== "function") return;
   const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
@@ -286,6 +298,12 @@ function setupDateFilterPickers() {
     if (datePickers.from) datePickers.from.clear();
     if (datePickers.to) datePickers.to.clear();
     dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    document.getElementById("filterRoute").value = "";
+    routeFilter = "";
+    render();
+  };
+  document.getElementById("filterRoute").onchange = function() {
+    routeFilter = this.value;
     render();
   };
 }
@@ -298,6 +316,8 @@ function setupRoutes(){
   ["route","eRoute"].forEach(id=>{
     document.getElementById(id).innerHTML = routes.map(r=>`<option>${r}</option>`).join("");
   });
+  document.getElementById("filterRoute").innerHTML =
+    `<option value="">Tất cả chiều</option>` + routes.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
 }
 ["revenue","cost","eRevenue","eCost"].forEach(id=>{
   document.addEventListener("input",e=>{
@@ -309,11 +329,13 @@ function setupRoutes(){
 });
 function render(){
   const tb=document.getElementById("tbody");
-  const filtered=records.filter(r=>matchesDateFilter(r.date));
+  const filtered=records.filter(r=>matchesFilters(r));
   if(!filtered.length){
     tb.innerHTML=`<tr><td colspan="10" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
   } else {
-    tb.innerHTML=filtered.map((r,i)=>`
+    tb.innerHTML=filtered.map((r,i)=>{
+      const profitVal=profit(r), marginVal=margin(r);
+      return `
       <tr>
         <td class="select-col"><input type="checkbox" class="rowCheckbox" onchange="toggleSelectRow('${r.id}', this.checked)" ${selectedIds.has(r.id)?"checked":""}></td>
         <td>${escapeHtml(r.date)}</td>
@@ -322,13 +344,14 @@ function render(){
         <td>${fmt(r.kg)}</td>
         <td class="money-revenue">${fmt(r.revenue)}</td>
         <td class="money-cost">${fmt(r.cost)}</td>
-        <td class="money-profit">${fmt(profit(r))}</td>
-        <td class="margin">${margin(r).toFixed(2)}%</td>
+        <td class="money-profit${profitVal<0?" negative":""}">${fmt(profitVal)}</td>
+        <td class="margin${marginVal<0?" negative":""}">${marginVal.toFixed(2)}%</td>
         <td><div class="row-actions">
           <button class="edit" onclick="openEdit('${r.id}')">✎ Sửa</button>
           <button class="delete" onclick="deleteRecord('${r.id}')">🗑 Xóa</button>
         </div></td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
   }
   const total=filtered.reduce((a,r)=>({
     packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,
@@ -337,18 +360,18 @@ function render(){
   const p=total.revenue-total.cost, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
     <tr><td></td><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
-    <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td><td class="money-profit">${fmt(p)}</td>
-    <td class="margin">${m.toFixed(2)}%</td><td></td></tr>`;
+    <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td><td class="money-profit${p<0?" negative":""}">${fmt(p)}</td>
+    <td class="margin${m<0?" negative":""}">${m.toFixed(2)}%</td><td></td></tr>`;
   sRevenue.textContent=money(total.revenue); sCost.textContent=money(total.cost);
   sProfit.textContent=money(p); sMargin.textContent=m.toFixed(2)+"%";
   updateSelectionUI(filtered);
 }
 function toggleSelectRow(id, checked){
   if(checked) selectedIds.add(id); else selectedIds.delete(id);
-  updateSelectionUI(records.filter(r=>matchesDateFilter(r.date)));
+  updateSelectionUI(records.filter(r=>matchesFilters(r)));
 }
 function toggleSelectAll(checked){
-  records.filter(r=>matchesDateFilter(r.date)).forEach(r=>{
+  records.filter(r=>matchesFilters(r)).forEach(r=>{
     if(checked) selectedIds.add(r.id); else selectedIds.delete(r.id);
   });
   render();
@@ -429,7 +452,7 @@ async function resetData(){
 }
 function exportCSV(){
   const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
-  records.filter(r=>matchesDateFilter(r.date)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,profit(r),margin(r).toFixed(2)+"%"]));
+  records.filter(r=>matchesFilters(r)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,profit(r),margin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu-gia-von.csv";a.click();

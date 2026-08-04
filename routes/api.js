@@ -6,8 +6,10 @@ var doanhThuAccess = require('../services/doanhThuAccess');
 
 var DOANH_THU_COOKIE = 'doanhThuAccess';
 
+var doanhThuProtectedPages = ['doanh-thu', 'doanh-thu-gia-von'];
+
 function requiresDoanhThuAuth(page, req) {
-  return page === 'doanh-thu' &&
+  return doanhThuProtectedPages.indexOf(page) !== -1 &&
     !doanhThuAccess.isValid(req.cookies && req.cookies[DOANH_THU_COOKIE]);
 }
 

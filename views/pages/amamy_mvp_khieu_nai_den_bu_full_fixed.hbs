@@ -114,7 +114,7 @@
       width: 100%;
       min-width: 1040px;
       border-collapse: collapse;
-      background: white;
+      background: #f7f8fa;
       overflow: hidden;
     }
     th, td {
@@ -171,7 +171,7 @@
       </select>
 
       <label>Chiều</label>
-      <select id="route">
+      <select id="route" onchange="handleRouteChange()">
         <option>Việt Mỹ</option>
         <option>Việt Úc</option>
         <option>Việt Canada</option>
@@ -192,6 +192,11 @@
         <option value="promo">Hoàn ưu đãi</option>
         <option value="error">Hoàn tiền do lỗi</option>
         <option value="lost">Hoàn thất lạc hàng hóa</option>
+        <option value="packDamage">Hoàn do lỗi đóng hàng, hỏng vỡ</option>
+        <option value="missingItems">Hoàn do mất 1-2 món trong thùng</option>
+        <option value="shopeeShortage">Hoàn tiền thiếu đơn Shopee</option>
+        <option value="weightMismatch">Hoàn tiền lệch cân nặng</option>
+        <option value="fullPackageLost">Hoàn tiền cho thất lạc cả kiện</option>
       </select>
 
       <div id="errorFields" class="hidden">
@@ -269,6 +274,12 @@
             <option>Hoàn ưu đãi</option>
             <option>Hoàn tiền do lỗi</option>
             <option>Hoàn thất lạc hàng hóa</option>
+            <option>Hoàn do lỗi đóng hàng, hỏng vỡ</option>
+            <option>Hoàn do mất 1-2 món trong thùng</option>
+            <option>Hoàn tiền thiếu đơn Shopee</option>
+            <option>Hoàn tiền lệch cân nặng</option>
+            <option>Hoàn tiền cho thất lạc cả kiện</option>
+            <option>Hoàn bảo hiểm rủi ro</option>
           </select>
           <select id="filterStatus" onchange="renderTable()">
             <option value="">Tất cả trạng thái</option>
@@ -308,6 +319,18 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
   <script>
     const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Hàng đông lạnh"];
+    const categoryLabels = {
+      promo: "Hoàn ưu đãi",
+      error: "Hoàn tiền do lỗi",
+      lost: "Hoàn thất lạc hàng hóa",
+      packDamage: "Hoàn do lỗi đóng hàng, hỏng vỡ",
+      missingItems: "Hoàn do mất 1-2 món trong thùng",
+      shopeeShortage: "Hoàn tiền thiếu đơn Shopee",
+      weightMismatch: "Hoàn tiền lệch cân nặng",
+      fullPackageLost: "Hoàn tiền cho thất lạc cả kiện",
+      insurance: "Hoàn bảo hiểm rủi ro"
+    };
+    const insuranceRoute = "Việt Nhật";
     const PAGE_RECORD_TYPE = "khieu-nai-den-bu";
     let records = [];
     let dateFilters = { month: "", dateFrom: "", dateTo: "" };
@@ -382,17 +405,24 @@
       return Number(n || 0).toLocaleString("vi-VN") + " đ";
     }
 
+    function toIsoDate(value) {
+      const str = String(value || "").trim();
+      let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+      m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+      return null;
+    }
+
     function formatDateVN(value) {
-      if (!value) return "";
-      if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
-        const [y, m, d] = value.slice(0, 10).split("-");
-        return `${d}/${m}/${y}`;
-      }
-      return value;
+      const iso = toIsoDate(value);
+      if (!iso) return value || "";
+      const [y, m, d] = iso.split("-");
+      return `${d}/${m}/${y}`;
     }
 
     function matchesDateFilter(dateStr) {
-      const iso = dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : null;
+      const iso = toIsoDate(dateStr);
       if (!iso) return true;
       const { month, dateFrom, dateTo } = dateFilters;
       if (dateFrom || dateTo) {
@@ -486,10 +516,24 @@
     }
 
     function getCategoryText() {
-      const v = document.getElementById("category").value;
-      if (v === "promo") return "Hoàn ưu đãi";
-      if (v === "error") return "Hoàn tiền do lỗi";
-      return "Hoàn thất lạc hàng hóa";
+      return categoryLabels[document.getElementById("category").value] || "";
+    }
+
+    function handleRouteChange() {
+      const categorySelect = document.getElementById("category");
+      const existingInsurance = categorySelect.querySelector('option[value="insurance"]');
+      if (document.getElementById("route").value === insuranceRoute) {
+        if (!existingInsurance) {
+          const opt = document.createElement("option");
+          opt.value = "insurance";
+          opt.textContent = categoryLabels.insurance;
+          categorySelect.appendChild(opt);
+        }
+      } else if (existingInsurance) {
+        if (categorySelect.value === "insurance") categorySelect.value = "promo";
+        existingInsurance.remove();
+      }
+      renderForm();
     }
 
     async function addRecord() {
@@ -502,10 +546,10 @@
       if (category === "error") {
         const errorType = document.getElementById("errorType").value;
         reason = errorType === "Lý do khác" ? document.getElementById("otherReason").value : errorType;
-      } else if (category === "promo") {
-        reason = "Hoàn ưu đãi";
-      } else {
+      } else if (category === "lost") {
         reason = "Thất lạc hàng hóa";
+      } else {
+        reason = categoryLabels[category] || "";
       }
 
       let loss = category === "lost"
@@ -595,7 +639,7 @@
 
     async function initPage() {
       initFilters();
-      renderForm();
+      handleRouteChange();
       setupDateFilterPickers();
       try {
         await loadRecords();

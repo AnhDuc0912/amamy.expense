@@ -1,0 +1,266 @@
+<style>
+  :root{
+    --nav:#36aef0; --ink:#172033;
+    --orange:#f97316;
+  }
+  .mvp-page{max-width:100%;min-width:0}
+  .mvp-page h1{font-size:26px;margin:0}
+  .mvp-page .sub{color:var(--muted);font-size:14px;margin-top:5px}
+  .mvp-page .page-head{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}
+  .mvp-page .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+  .mvp-page button,.mvp-page .btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
+  .mvp-page .btn-light{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .mvp-page .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.05);padding:20px;margin-bottom:18px}
+  .mvp-page .card-title{font-size:14px;font-weight:800;color:#64748b;letter-spacing:.03em;margin-bottom:10px}
+  .topFilters button{width:auto;margin:0}
+  .topFilters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+  .topFilterActions{min-width:0}
+  .mvp-page label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
+  .mvp-page input,.mvp-page select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
+  .mvp-page input:focus,.mvp-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
+  .mvp-page .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:18px}
+  .mvp-page .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+  .mvp-page .stat span{display:block;color:var(--muted);font-size:12px;font-weight:700}
+  .mvp-page .stat strong{display:block;font-size:18px;margin-top:8px}
+  .mvp-page .netProfitCard{text-align:center}
+  .mvp-page .netProfitValue{display:block;font-size:36px;margin-top:6px}
+  .mvp-page .netProfitValue.positive{color:var(--green)}
+  .mvp-page .netProfitValue.negative{color:var(--red)}
+  .mvp-page .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
+  .mvp-page table{width:100%;border-collapse:collapse;background:#f7f8fa}
+  .mvp-page th,.mvp-page td{padding:13px 12px;border-bottom:1px solid #edf2f7;text-align:left;font-size:13px}
+  .mvp-page th{background:#eef6ff;font-size:12px}
+  .mvp-page td.amount{text-align:right;font-weight:700}
+  .mvp-page td.amount.negative{color:var(--red)}
+  .mvp-page td.amount.positive{color:#2563eb}
+  .mvp-page tr.netRow td{font-weight:900;background:#f8fbff}
+  @media(max-width:1200px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:760px){.mvp-page .stats{grid-template-columns:repeat(2,1fr)}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
+</style>
+
+<div class="mvp-page">
+  <div class="page-head">
+    <div>
+      <h1>Báo cáo hoạt động kinh doanh</h1>
+      <div class="sub">Tự động tổng hợp từ Doanh thu, Giá vốn, Phí cửa hàng, Marketing, Khiếu nại và Vận hành.</div>
+    </div>
+    <div class="toolbar">
+      <a class="btn-light" style="display:inline-flex;align-items:center;text-decoration:none" href="/doanh-thu/logout?redirect=/bao-cao-hoat-dong-kinh-doanh">Đăng xuất</a>
+    </div>
+  </div>
+
+  <section class="topFilters" aria-label="Bộ lọc thời gian">
+    <label class="dateFilter monthFilter"><span>Tháng</span>
+      <input id="filterMonth" type="text" placeholder="Tất cả tháng" />
+    </label>
+    <label class="dateFilter"><span>Từ ngày</span>
+      <input id="filterDateFrom" type="text" placeholder="Chọn ngày" />
+    </label>
+    <label class="dateFilter"><span>Đến ngày</span>
+      <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+    </label>
+    <div class="filterActions topFilterActions">
+      <button id="applyDateFilter" type="button">Áp dụng</button>
+      <button id="clearDateFilter" type="button" class="filterClear">Xóa lọc</button>
+    </div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
+    <div class="stat"><span>TỔNG GIÁ VỐN</span><strong id="sCost">0 đ</strong></div>
+    <div class="stat"><span>PHÍ HOẠT ĐỘNG CỬA HÀNG</span><strong id="sStore">0 đ</strong></div>
+    <div class="stat"><span>CHI TIÊU MARKETING</span><strong id="sMarketing">0 đ</strong></div>
+    <div class="stat"><span>CHI TIÊU KHIẾU NẠI</span><strong id="sComplaint">0 đ</strong></div>
+    <div class="stat"><span>CHI TIÊU VẬN HÀNH</span><strong id="sOperating">0 đ</strong></div>
+  </section>
+
+  <section class="card netProfitCard">
+    <div class="card-title">LÃI RÒNG SAU CÙNG</div>
+    <strong id="sNetProfit" class="netProfitValue">0 đ</strong>
+    <div class="sub">= Doanh thu − Giá vốn − Phí cửa hàng − Marketing − Khiếu nại − Vận hành</div>
+  </section>
+
+  <section class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Khoản mục</th><th style="text-align:right">Số tiền</th></tr>
+        </thead>
+        <tbody id="breakdownBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+<script>
+const marketingCategories = ["Thanh toán chi phí Marketing", "Thanh toán chi phí Ads"];
+let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+let datePickers = {};
+
+async function requestJson(url) {
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Không thể tải dữ liệu");
+  return payload;
+}
+
+function fmt(n){return new Intl.NumberFormat("vi-VN").format(Number(n)||0)}
+function money(n){return fmt(n)+" đ"}
+
+function matchesDateFilter(dateStr) {
+  const iso = dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : null;
+  if (!iso) return true;
+  const { month, dateFrom, dateTo } = dateFilters;
+  if (dateFrom || dateTo) {
+    return (!dateFrom || iso >= dateFrom) && (!dateTo || iso <= dateTo);
+  }
+  if (month) return iso.slice(0, 7) === month;
+  return true;
+}
+
+function setupDateFilterPickers() {
+  if (typeof flatpickr !== "function") return;
+  const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
+  const commonDateOptions = { altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d", allowInput: true, locale, disableMobile: true };
+
+  if (typeof monthSelectPlugin === "function") {
+    datePickers.month = flatpickr(document.getElementById("filterMonth"), {
+      altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
+      onChange: function(selectedDates, value) {
+        dateFilters.month = value || "";
+        render();
+      }
+    });
+  }
+  datePickers.from = flatpickr(document.getElementById("filterDateFrom"), commonDateOptions);
+  datePickers.to = flatpickr(document.getElementById("filterDateTo"), commonDateOptions);
+
+  document.getElementById("applyDateFilter").onclick = function() {
+    dateFilters.dateFrom = document.getElementById("filterDateFrom").value;
+    dateFilters.dateTo = document.getElementById("filterDateTo").value;
+    render();
+  };
+  document.getElementById("clearDateFilter").onclick = function() {
+    document.getElementById("filterMonth").value = "";
+    document.getElementById("filterDateFrom").value = "";
+    document.getElementById("filterDateTo").value = "";
+    if (datePickers.month) datePickers.month.clear();
+    if (datePickers.from) datePickers.from.clear();
+    if (datePickers.to) datePickers.to.clear();
+    dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    render();
+  };
+}
+
+let sourceData = {
+  doanhThu: [],
+  doanhThuGiaVon: [],
+  marketing: [],
+  khieuNai: [],
+  vanHanh: [],
+  expenses: []
+};
+
+function sumRevenueCost(records) {
+  return records.filter(r => matchesDateFilter(r.date)).reduce((acc, r) => {
+    acc.revenue += Number(r.revenue) || 0;
+    acc.cost += Number(r.cost) || 0;
+    return acc;
+  }, { revenue: 0, cost: 0 });
+}
+
+function sumMarketing(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date) && marketingCategories.includes(r.category))
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+}
+
+function sumComplaintLoss(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date))
+    .reduce((sum, r) => sum + (Number(r.loss) || 0), 0);
+}
+
+function sumOperating(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date))
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+}
+
+function sumStoreExpenses(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date))
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+}
+
+function render() {
+  const revenueA = sumRevenueCost(sourceData.doanhThu);
+  const revenueB = sumRevenueCost(sourceData.doanhThuGiaVon);
+  const totalRevenue = revenueA.revenue + revenueB.revenue;
+  const totalCost = revenueA.cost + revenueB.cost;
+  const storeFee = sumStoreExpenses(sourceData.expenses);
+  const marketingSpend = sumMarketing(sourceData.marketing);
+  const complaintLoss = sumComplaintLoss(sourceData.khieuNai);
+  const operatingSpend = sumOperating(sourceData.vanHanh);
+  const netProfit = totalRevenue - totalCost - storeFee - marketingSpend - complaintLoss - operatingSpend;
+
+  document.getElementById("sRevenue").textContent = money(totalRevenue);
+  document.getElementById("sCost").textContent = money(totalCost);
+  document.getElementById("sStore").textContent = money(storeFee);
+  document.getElementById("sMarketing").textContent = money(marketingSpend);
+  document.getElementById("sComplaint").textContent = money(complaintLoss);
+  document.getElementById("sOperating").textContent = money(operatingSpend);
+
+  const netProfitEl = document.getElementById("sNetProfit");
+  netProfitEl.textContent = money(netProfit);
+  netProfitEl.classList.toggle("positive", netProfit >= 0);
+  netProfitEl.classList.toggle("negative", netProfit < 0);
+
+  const rows = [
+    ["Tổng doanh thu", totalRevenue, "positive"],
+    ["Tổng giá vốn", -totalCost, "negative"],
+    ["Phí hoạt động cửa hàng", -storeFee, "negative"],
+    ["Chi tiêu Marketing", -marketingSpend, "negative"],
+    ["Chi tiêu khiếu nại", -complaintLoss, "negative"],
+    ["Chi tiêu vận hành", -operatingSpend, "negative"]
+  ];
+  document.getElementById("breakdownBody").innerHTML =
+    rows.map(([label, value, cls]) => `
+      <tr>
+        <td>${label}</td>
+        <td class="amount ${cls}">${value < 0 ? "-" : ""}${money(Math.abs(value))}</td>
+      </tr>`).join("") +
+    `<tr class="netRow">
+      <td>Lãi ròng sau cùng</td>
+      <td class="amount">${money(netProfit)}</td>
+    </tr>`;
+}
+
+async function init() {
+  setupDateFilterPickers();
+  try {
+    const [doanhThu, doanhThuGiaVon, marketing, khieuNai, vanHanh, bootstrap] = await Promise.all([
+      requestJson("/api/page-records/doanh-thu"),
+      requestJson("/api/page-records/doanh-thu-gia-von"),
+      requestJson("/api/page-records/chi-tieu-noi-bo"),
+      requestJson("/api/page-records/khieu-nai-den-bu"),
+      requestJson("/api/page-records/chi-tieu-van-hanh"),
+      requestJson("/api/bootstrap")
+    ]);
+    sourceData.doanhThu = doanhThu.records || [];
+    sourceData.doanhThuGiaVon = doanhThuGiaVon.records || [];
+    sourceData.marketing = marketing.records || [];
+    sourceData.khieuNai = khieuNai.records || [];
+    sourceData.vanHanh = vanHanh.records || [];
+    sourceData.expenses = bootstrap.expenses || [];
+  } catch (error) {
+    alert(error.message);
+  }
+  render();
+}
+init();
+</script>

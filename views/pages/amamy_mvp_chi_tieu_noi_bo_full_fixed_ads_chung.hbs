@@ -32,7 +32,7 @@
     .box strong { font-size:18px; }
     .filters { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px; }
     .tableScroll { max-width:100%; overflow-x:auto; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.08); }
-    table { width:100%; min-width:1120px; border-collapse:collapse; background:white; overflow:hidden; }
+    table { width:100%; min-width:1120px; border-collapse:collapse; background:#f7f8fa; overflow:hidden; }
     th, td { padding:11px 9px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:13px; vertical-align:top; }
     th { background:#f8fafc; color:#334155; }
     .badge { padding:5px 9px; border-radius:999px; font-weight:700; font-size:12px; display:inline-block; }
@@ -54,8 +54,8 @@
   </style>
 <div class="mvp-page">
 <header>
-  <h1>Amamy - Chi tiêu nội bộ</h1>
-  <p>MVP nhập chi phí: giá vốn đối tác, marketing, ads, Viettel Post, part-time / hoa hồng / tiền Yên</p>
+  <h1>Amamy - Marketing</h1>
+  <p>MVP nhập chi phí: giá vốn đối tác, marketing, ads và chi phí khác</p>
 </header>
 
 <div class="wrap">
@@ -81,8 +81,6 @@
       <option value="cost">Thanh toán giá vốn đối tác</option>
       <option value="marketing">Thanh toán chi phí Marketing</option>
       <option value="ads">Thanh toán chi phí Ads</option>
-      <option value="viettel">Chi phí vận chuyển Viettel Post</option>
-      <option value="staff">Chi phí nhân viên / part-time / hoa hồng</option>
       <option value="other">Chi phí khác</option>
     </select>
 
@@ -153,32 +151,6 @@
       </div>
     </div>
 
-    <div id="staffBox" class="hidden">
-      <label>Tên nhân viên</label>
-      <select id="staffName" onchange="renderForm()">
-        <option>Tiến Thành</option>
-        <option>Nguyễn Chi</option>
-        <option>Nhân viên khác</option>
-      </select>
-      <div id="staffOtherBox" class="hidden">
-        <label>Nhập tên nhân viên khác</label>
-        <input id="staffOther" placeholder="Tên nhân viên" />
-      </div>
-
-      <label>Loại thanh toán</label>
-      <select id="staffPaymentType" onchange="renderForm()">
-        <option>Thanh toán tiền Yên</option>
-        <option>Thanh toán hoa hồng thu gom</option>
-        <option>Lương part-time</option>
-        <option>Thưởng xử lý đơn</option>
-        <option>Chi phí khác</option>
-      </select>
-      <div id="staffPaymentOtherBox" class="hidden">
-        <label>Nhập loại chi phí khác</label>
-        <input id="staffPaymentOther" placeholder="Ví dụ: hỗ trợ đóng hàng..." />
-      </div>
-    </div>
-
     <div id="otherBox" class="hidden">
       <label>Tên chi phí khác</label>
       <input id="otherName" placeholder="Ví dụ: mua máy in, vật tư..." />
@@ -223,8 +195,6 @@
       <div class="box"><span>Giá vốn đối tác</span><strong id="sumCost">0 đ</strong></div>
       <div class="box"><span>Marketing</span><strong id="sumMarketing">0 đ</strong></div>
       <div class="box"><span>Ads</span><strong id="sumAds">0 đ</strong></div>
-      <div class="box"><span>Viettel Post</span><strong id="sumViettel">0 đ</strong></div>
-      <div class="box"><span>Nhân viên / HH</span><strong id="sumStaff">0 đ</strong></div>
     </div>
 
     <section class="topFilters" aria-label="Bộ lọc thời gian" style="margin-bottom:14px;">
@@ -251,8 +221,6 @@
           <option>Thanh toán giá vốn đối tác</option>
           <option>Thanh toán chi phí Marketing</option>
           <option>Thanh toán chi phí Ads</option>
-          <option>Chi phí vận chuyển Viettel Post</option>
-          <option>Chi phí nhân viên / part-time / hoa hồng</option>
           <option>Chi phí khác</option>
         </select>
 
@@ -273,10 +241,6 @@
 
         <select id="filterPartner" onchange="renderTable()">
           <option value="">Tất cả đối tác</option>
-        </select>
-
-        <select id="filterStaff" onchange="renderTable()">
-          <option value="">Tất cả nhân viên</option>
         </select>
 
         <select id="filterAds" onchange="renderTable()">
@@ -327,7 +291,6 @@
 <script>
 const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Châu Âu","Việt Nhật","Việt Séc","Việt Pháp","Đức Việt","Nhật Việt","Mỹ Việt","Đông lạnh","Shopee"];
 const partners = ["Kinkin Logistic","VietExpress","Expolo","Bay Online","Huthui Cargo","AE Express"];
-const staffList = ["Tiến Thành","Nguyễn Chi"];
 
 const PAGE_RECORD_TYPE = "chi-tieu-noi-bo";
 let records = [];
@@ -400,8 +363,6 @@ function categoryText(value) {
     cost:"Thanh toán giá vốn đối tác",
     marketing:"Thanh toán chi phí Marketing",
     ads:"Thanh toán chi phí Ads",
-    viettel:"Chi phí vận chuyển Viettel Post",
-    staff:"Chi phí nhân viên / part-time / hoa hồng",
     other:"Chi phí khác"
   };
   return map[value];
@@ -472,9 +433,6 @@ async function init() {
   const filterPartner = document.getElementById("filterPartner");
   partners.forEach(p => filterPartner.appendChild(new Option(p,p)));
 
-  const filterStaff = document.getElementById("filterStaff");
-  staffList.forEach(s => filterStaff.appendChild(new Option(s,s)));
-
   document.getElementById("date").valueAsDate = new Date();
   renderForm();
   setupDateFilterPickers();
@@ -495,15 +453,12 @@ function renderForm() {
   document.getElementById("partnerBox").classList.toggle("hidden", c !== "cost");
   document.getElementById("marketingBox").classList.toggle("hidden", c !== "marketing");
   document.getElementById("adsBox").classList.toggle("hidden", c !== "ads");
-  document.getElementById("staffBox").classList.toggle("hidden", c !== "staff");
   document.getElementById("otherBox").classList.toggle("hidden", c !== "other");
 
   document.getElementById("partnerOtherBox").classList.toggle("hidden", document.getElementById("partner").value !== "Đối tác khác");
   document.getElementById("marketingOtherBox").classList.toggle("hidden", document.getElementById("marketingReason").value !== "Chi phí khác");
   document.getElementById("adsPlatformOtherBox").classList.toggle("hidden", document.getElementById("adsPlatform").value !== "Nền tảng khác");
   document.getElementById("adsAccountOtherBox").classList.toggle("hidden", document.getElementById("adsAccount").value !== "Tài khoản khác");
-  document.getElementById("staffOtherBox").classList.toggle("hidden", document.getElementById("staffName").value !== "Nhân viên khác");
-  document.getElementById("staffPaymentOtherBox").classList.toggle("hidden", document.getElementById("staffPaymentType").value !== "Chi phí khác");
 
   updatePreview();
 }
@@ -524,15 +479,6 @@ function resolveMainAndReason(category) {
     return {
       main: getValue("adsPlatform", "adsPlatformOther", "Nền tảng khác"),
       reason: getValue("adsAccount", "adsAccountOther", "Tài khoản khác")
-    };
-  }
-  if (category === "viettel") {
-    return { main: "Viettel Post", reason: "Chi phí vận chuyển" };
-  }
-  if (category === "staff") {
-    return {
-      main: getValue("staffName", "staffOther", "Nhân viên khác"),
-      reason: getValue("staffPaymentType", "staffPaymentOther", "Chi phí khác")
     };
   }
   return {
@@ -587,7 +533,6 @@ function renderTable() {
   const fp = document.getElementById("filterPayer").value;
   const fs = document.getElementById("filterStatus").value;
   const fpartner = document.getElementById("filterPartner").value;
-  const fstaff = document.getElementById("filterStaff").value;
   const fads = document.getElementById("filterAds").value;
   const fpayment = document.getElementById("filterPayment").value;
 
@@ -597,7 +542,6 @@ function renderTable() {
     (!fp || r.payer === fp) &&
     (!fs || r.status === fs) &&
     (!fpartner || r.main === fpartner) &&
-    (!fstaff || r.main === fstaff) &&
     (!fads || r.main === fads) &&
     (!fpayment || r.payment === fpayment) &&
     matchesDateFilter(r.date)
@@ -629,8 +573,6 @@ function renderSummary(data) {
   document.getElementById("sumCost").textContent = money(sumBy(data, "Thanh toán giá vốn đối tác"));
   document.getElementById("sumMarketing").textContent = money(sumBy(data, "Thanh toán chi phí Marketing"));
   document.getElementById("sumAds").textContent = money(sumBy(data, "Thanh toán chi phí Ads"));
-  document.getElementById("sumViettel").textContent = money(sumBy(data, "Chi phí vận chuyển Viettel Post"));
-  document.getElementById("sumStaff").textContent = money(sumBy(data, "Chi phí nhân viên / part-time / hoa hồng"));
 }
 init();
 </script>

@@ -4,6 +4,11 @@ var doanhThuAccess = require('../services/doanhThuAccess');
 
 var DOANH_THU_COOKIE = 'doanhThuAccess';
 var DOANH_THU_COOKIE_MAX_AGE = 12 * 60 * 60 * 1000;
+var DOANH_THU_PROTECTED_PAGES = {
+  '/doanh-thu': { title: 'Amamy - Doanh thu', navDoanhThuChiTiet: true, pageLabel: 'Doanh thu' },
+  '/doanh-thu-gia-von': { title: 'Amamy - Doanh thu và giá vốn', navDoanhThu: true, pageLabel: 'Doanh thu & giá vốn' },
+  '/bao-cao-hoat-dong-kinh-doanh': { title: 'Amamy - Báo cáo hoạt động kinh doanh', navBaoCao: true, pageLabel: 'Báo cáo hoạt động kinh doanh' }
+};
 
 function hasDoanhThuAccess(req) {
   return doanhThuAccess.isValid(req.cookies && req.cookies[DOANH_THU_COOKIE]);
@@ -11,6 +16,23 @@ function hasDoanhThuAccess(req) {
 
 function validDoanhThuPassword(value) {
   return String(value || '') === String(process.env.BUDGET_PASSWORD || '280836');
+}
+
+function safeDoanhThuRedirect(value) {
+  return Object.prototype.hasOwnProperty.call(DOANH_THU_PROTECTED_PAGES, value) ? value : '/doanh-thu';
+}
+
+function renderDoanhThuLogin(req, res, redirectPath, error) {
+  var meta = DOANH_THU_PROTECTED_PAGES[redirectPath];
+  res.render('pages/doanh_thu_login', {
+    title: meta.title,
+    navDoanhThuChiTiet: meta.navDoanhThuChiTiet,
+    navDoanhThu: meta.navDoanhThu,
+    navBaoCao: meta.navBaoCao,
+    pageLabel: meta.pageLabel,
+    redirectPath: redirectPath,
+    error: error
+  });
 }
 
 /* GET home page. */
@@ -31,7 +53,7 @@ router.get('/khieu-nai-den-bu', function(req, res) {
 
 router.get('/chi-tieu-noi-bo', function(req, res) {
   res.render('pages/amamy_mvp_chi_tieu_noi_bo_full_fixed_ads_chung', {
-    title: 'Amamy - Chi tiêu nội bộ',
+    title: 'Amamy - Marketing',
     navNoiBo: true
   });
 });
@@ -44,6 +66,9 @@ router.get('/chi-tieu-van-hanh', function(req, res) {
 });
 
 router.get('/doanh-thu-gia-von', function(req, res) {
+  if (!hasDoanhThuAccess(req)) {
+    return renderDoanhThuLogin(req, res, '/doanh-thu-gia-von');
+  }
   res.render('pages/amamy_mvp_doanh_thu_gia_von_ban_dep', {
     title: 'Amamy - Doanh thu và giá vốn',
     navDoanhThu: true
@@ -52,10 +77,7 @@ router.get('/doanh-thu-gia-von', function(req, res) {
 
 router.get('/doanh-thu', function(req, res) {
   if (!hasDoanhThuAccess(req)) {
-    return res.render('pages/doanh_thu_login', {
-      title: 'Amamy - Doanh thu',
-      navDoanhThuChiTiet: true
-    });
+    return renderDoanhThuLogin(req, res, '/doanh-thu');
   }
   res.render('pages/amamy_mvp_doanh_thu', {
     title: 'Amamy - Doanh thu',
@@ -63,13 +85,20 @@ router.get('/doanh-thu', function(req, res) {
   });
 });
 
+router.get('/bao-cao-hoat-dong-kinh-doanh', function(req, res) {
+  if (!hasDoanhThuAccess(req)) {
+    return renderDoanhThuLogin(req, res, '/bao-cao-hoat-dong-kinh-doanh');
+  }
+  res.render('pages/amamy_mvp_bao_cao_hoat_dong_kinh_doanh', {
+    title: 'Amamy - Báo cáo hoạt động kinh doanh',
+    navBaoCao: true
+  });
+});
+
 router.post('/doanh-thu/login', function(req, res) {
+  var redirectPath = safeDoanhThuRedirect(req.body && req.body.redirect);
   if (!validDoanhThuPassword(req.body && req.body.password)) {
-    return res.render('pages/doanh_thu_login', {
-      title: 'Amamy - Doanh thu',
-      navDoanhThuChiTiet: true,
-      error: 'Sai mật khẩu, vui lòng thử lại.'
-    });
+    return renderDoanhThuLogin(req, res, redirectPath, 'Sai mật khẩu, vui lòng thử lại.');
   }
   var token = doanhThuAccess.grant();
   res.cookie(DOANH_THU_COOKIE, token, {
@@ -77,14 +106,14 @@ router.post('/doanh-thu/login', function(req, res) {
     sameSite: 'lax',
     maxAge: DOANH_THU_COOKIE_MAX_AGE
   });
-  res.redirect('/doanh-thu');
+  res.redirect(redirectPath);
 });
 
 router.get('/doanh-thu/logout', function(req, res) {
   var token = req.cookies && req.cookies[DOANH_THU_COOKIE];
   if (token) doanhThuAccess.revoke(token);
   res.clearCookie(DOANH_THU_COOKIE);
-  res.redirect('/doanh-thu');
+  res.redirect(safeDoanhThuRedirect(req.query && req.query.redirect));
 });
 
 module.exports = router;
