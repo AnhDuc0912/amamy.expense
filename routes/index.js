@@ -65,6 +65,13 @@ router.get('/chi-tieu-van-hanh', function(req, res) {
   });
 });
 
+router.get('/lich-lam-tu-van', function(req, res) {
+  res.render('pages/mvp_xep_lich_tinh_luong', {
+    title: 'Amamy - Lịch làm tư vấn',
+    navLichTuVan: true
+  });
+});
+
 router.get('/doanh-thu-gia-von', function(req, res) {
   if (!hasDoanhThuAccess(req)) {
     return renderDoanhThuLogin(req, res, '/doanh-thu-gia-von');

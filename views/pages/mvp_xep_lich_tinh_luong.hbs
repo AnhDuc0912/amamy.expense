@@ -1,0 +1,806 @@
+<style>
+  .lltv {
+    --bg: #f5f7fb;
+    --card: #fff;
+    --text: #172033;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --primary: #2563eb;
+    --danger: #dc2626;
+    --ok: #059669;
+    --shadow: 0 8px 30px rgba(15, 23, 42, .08)
+  }
+
+  .lltv {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: var(--text)
+  }
+
+  .lltv h1 {
+    margin: 0 0 6px;
+    font-size: 28px
+  }
+
+  .lltv h2 {
+    margin: 0 0 14px;
+    font-size: 18px
+  }
+
+  .lltv .sub {
+    color: var(--muted);
+    margin-bottom: 20px
+  }
+
+  .lltv .grid {
+    display: grid;
+    grid-template-columns: 370px 1fr;
+    gap: 18px
+  }
+
+  .lltv .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow)
+  }
+
+  .lltv label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 10px 0 6px
+  }
+
+  .lltv input,
+  .lltv select,
+  .lltv button {
+    font: inherit
+  }
+
+  .lltv input,
+  .lltv select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: white
+  }
+
+  .lltv button {
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700
+  }
+
+  .lltv .primary {
+    background: var(--primary);
+    color: white
+  }
+
+  .lltv .ghost {
+    background: #eef2ff;
+    color: #1e40af
+  }
+
+  .lltv .danger {
+    background: #fee2e2;
+    color: #991b1b
+  }
+
+  .lltv .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px
+  }
+
+  .lltv .band-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px 110px 32px;
+    gap: 6px;
+    align-items: end;
+    margin-top: 8px
+  }
+
+  .lltv .band-row label {
+    margin: 0 0 4px;
+    font-size: 11px
+  }
+
+  .lltv .band-row button {
+    padding: 10px 0
+  }
+
+  .lltv .band-list-empty {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 8px
+  }
+
+  .lltv .employee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px
+  }
+
+  .lltv .employee-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--line);
+    padding: 10px;
+    border-radius: 10px
+  }
+
+  .lltv .employee-item small {
+    color: var(--muted)
+  }
+
+  .lltv .employee-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0
+  }
+
+  .lltv .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+    margin-bottom: 14px
+  }
+
+  .lltv .toolbar>div {
+    min-width: 180px
+  }
+
+  .lltv .table-wrap {
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px
+  }
+
+  .lltv table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 1000px;
+    background: white
+  }
+
+  .lltv th,
+  .lltv td {
+    border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    padding: 8px;
+    vertical-align: top
+  }
+
+  .lltv th {
+    background: #f8fafc;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: 13px
+  }
+
+  .lltv td:last-child,
+  .lltv th:last-child {
+    border-right: 0
+  }
+
+  .lltv .day {
+    min-width: 165px
+  }
+
+  .lltv .shift {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 6px;
+    font-size: 13px
+  }
+
+  .lltv .shift strong {
+    display: block
+  }
+
+  .lltv .shift-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px
+  }
+
+  .lltv .mini {
+    padding: 5px 8px;
+    font-size: 12px
+  }
+
+  .lltv .summary {
+    margin-top: 18px
+  }
+
+  .lltv .money {
+    font-weight: 800;
+    color: var(--ok)
+  }
+
+  .lltv .muted {
+    color: var(--muted)
+  }
+
+  .lltv .rates {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px
+  }
+
+  .lltv .rate {
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center
+  }
+
+  .lltv .rate b {
+    display: block;
+    font-size: 16px
+  }
+
+  .lltv .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 20
+  }
+
+  .lltv .modal.open {
+    display: flex
+  }
+
+  .lltv .modal-card {
+    background: white;
+    width: min(560px, 100%);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow)
+  }
+
+  .lltv .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px
+  }
+
+  .lltv .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 14px
+  }
+
+  .lltv .kpi {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px
+  }
+
+  .lltv .kpi .v {
+    font-size: 22px;
+    font-weight: 800;
+    margin-top: 4px
+  }
+
+  .lltv .loading {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 10px
+  }
+
+  @media(max-width:900px) {
+    .lltv .grid {
+      grid-template-columns: 1fr
+    }
+
+    .lltv .kpis {
+      grid-template-columns: 1fr
+    }
+
+    .lltv .rates {
+      grid-template-columns: 1fr
+    }
+
+    .lltv .band-row {
+      grid-template-columns: 1fr 1fr;
+      row-gap: 8px
+    }
+  }
+</style>
+
+<div class="lltv">
+  <h1>Xếp lịch tư vấn &amp; tính lương theo giờ</h1>
+  <div class="sub">Dữ liệu được lưu chung trên hệ thống, không cần mật khẩu để xem hoặc chỉnh sửa.</div>
+  <div class="loading" id="loadingNote">Đang tải dữ liệu...</div>
+
+  <div class="grid">
+    <aside class="card">
+      <h2>Nhân viên</h2>
+      <label>Tên nhân viên</label>
+      <input id="employeeName" placeholder="Ví dụ: Lan Anh" />
+      <button class="primary" style="width:100%;margin-top:10px" onclick="addEmployee()">+ Thêm nhân viên</button>
+
+      <div class="employee-list" id="employeeList"></div>
+
+      <h2 style="margin-top:22px">Mức lương gợi ý (mặc định)</h2>
+      <div class="rates">
+        <div class="rate"><span>04:00–06:00</span><b>40.000đ/h</b></div>
+        <div class="rate"><span>06:00–08:00</span><b>28.000đ/h</b></div>
+        <div class="rate"><span>Còn lại</span><b>25.000đ/h</b></div>
+      </div>
+      <p class="muted" style="font-size:13px">Đây chỉ là gợi ý ban đầu. Mỗi nhân viên có thể có khung giờ và mức lương
+        riêng — bấm "Sửa lương" ở từng bạn để thêm nhiều khung ca, ví dụ: ca sáng 04:00–08:00, ca tối 18:00–23:00,...
+      </p>
+    </aside>
+
+    <main>
+      <div class="card">
+        <div class="toolbar">
+          <div>
+            <label>Tuần bắt đầu</label>
+            <input type="date" id="weekStart" />
+          </div>
+          <button class="primary" onclick="openShiftModal()">+ Thêm ca</button>
+          <button class="ghost" onclick="goToday()">Tuần hiện tại</button>
+          <button class="ghost" onclick="exportCSV()">Xuất CSV lương</button>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="muted">Tổng số ca</div>
+            <div class="v" id="kpiShifts">0</div>
+          </div>
+          <div class="kpi">
+            <div class="muted">Tổng giờ</div>
+            <div class="v" id="kpiHours">0</div>
+          </div>
+          <div class="kpi">
+            <div class="muted">Tổng lương tuần</div>
+            <div class="v money" id="kpiPay">0đ</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="scheduleTable"></table>
+        </div>
+
+        <div class="summary">
+          <h2>Tổng kết lương theo nhân viên</h2>
+          <div class="table-wrap">
+            <table id="summaryTable"></table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="lltv modal" id="shiftModal">
+  <div class="modal-card">
+    <h2 id="modalTitle">Thêm ca làm</h2>
+    <input type="hidden" id="shiftId" />
+    <div class="row">
+      <div>
+        <label>Nhân viên</label>
+        <select id="shiftEmployee"></select>
+      </div>
+      <div>
+        <label>Ngày</label>
+        <input type="date" id="shiftDate" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Giờ bắt đầu</label>
+        <input type="time" id="shiftStart" value="08:00" />
+      </div>
+      <div>
+        <label>Giờ kết thúc</label>
+        <input type="time" id="shiftEnd" value="12:00" />
+      </div>
+    </div>
+    <label>Ghi chú</label>
+    <input id="shiftNote" placeholder="Ví dụ: ca sáng, đổi ca với Như..." />
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeShiftModal()">Hủy</button>
+      <button class="primary" onclick="saveShift()">Lưu ca</button>
+    </div>
+  </div>
+</div>
+
+<div class="lltv modal" id="rateModal">
+  <div class="modal-card">
+    <h2>Mức lương của <span id="rateEmployeeName"></span></h2>
+    <input type="hidden" id="rateEmployeeId" />
+    <label>Khung giờ &amp; mức lương riêng</label>
+    <div id="rateBandList"></div>
+    <button type="button" class="ghost" style="width:100%;margin-top:10px" onclick="addRateBandRow()">+ Thêm khung
+      giờ</button>
+    <label>Mức lương ngoài các khung giờ trên (đ/h)</label>
+    <input type="number" id="rateBase" min="0" step="1000" />
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeRateModal()">Hủy</button>
+      <button class="primary" onclick="saveRate()">Lưu mức lương</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+    const PAGE = 'lich-lam-tu-van';
+    const API_BASE = '/api/page-records/' + PAGE;
+    const DEFAULT_BANDS = [
+      { label: 'Ca sáng sớm', start: '04:00', end: '06:00', rate: 40000 },
+      { label: 'Ca sáng', start: '06:00', end: '08:00', rate: 28000 }
+    ];
+    const DEFAULT_BASE_RATE = 25000;
+
+    let employees = [];
+    let shifts = [];
+
+    function fmtMoney(n) { return Math.round(n).toLocaleString('vi-VN') + 'đ'; }
+    function toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+    function iso(d) { return d.toISOString().slice(0, 10); }
+    function mondayOf(date) {
+      const d = new Date(date); d.setHours(0, 0, 0, 0);
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      return d;
+    }
+    function dateAdd(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
+
+    function getShiftMinutes(shift) {
+      let s = toMin(shift.start), e = toMin(shift.end);
+      if (e <= s) e += 1440;
+      return e - s;
+    }
+    function overlap(a1, a2, b1, b2) { return Math.max(0, Math.min(a2, b2) - Math.max(a1, b1)); }
+
+    function employeeRateConfig(employeeName) {
+      const emp = employees.find(e => e.name === employeeName);
+      if (!emp) return { bands: DEFAULT_BANDS, base: DEFAULT_BASE_RATE, isCustom: false };
+      return {
+        bands: Array.isArray(emp.rateBands) ? emp.rateBands : DEFAULT_BANDS,
+        base: Number.isFinite(emp.baseRate) ? emp.baseRate : DEFAULT_BASE_RATE,
+        isCustom: Array.isArray(emp.rateBands)
+      };
+    }
+
+    // Trả về danh sách [từ phút, đến phút, giá] phủ kín 1 ngày (0-1440),
+    // khung giờ riêng đè lên nền là mức lương "còn lại".
+    function dayRateSegments(employeeName) {
+      const { bands, base } = employeeRateConfig(employeeName);
+      const sorted = bands
+        .map(b => ({ start: toMin(b.start), end: toMin(b.end), rate: Number(b.rate) }))
+        .filter(b => Number.isFinite(b.start) && Number.isFinite(b.end) && b.end > b.start && Number.isFinite(b.rate))
+        .sort((a, b) => a.start - b.start);
+      const segments = [];
+      let cursor = 0;
+      sorted.forEach(band => {
+        const start = Math.max(band.start, cursor);
+        if (start > cursor) segments.push([cursor, start, base]);
+        if (band.end > start) segments.push([start, band.end, band.rate]);
+        cursor = Math.max(cursor, band.end);
+      });
+      if (cursor < 1440) segments.push([cursor, 1440, base]);
+      return segments;
+    }
+
+    function calcShiftPay(shift) {
+      let s = toMin(shift.start), e = toMin(shift.end);
+      if (e <= s) e += 1440;
+      const daySegments = dayRateSegments(shift.employee);
+      const segments = daySegments.concat(daySegments.map(([a, b, rate]) => [a + 1440, b + 1440, rate]));
+      let pay = 0;
+      for (const [a, b, rate] of segments) {
+        pay += overlap(s, e, a, b) / 60 * rate;
+      }
+      return pay;
+    }
+
+    async function apiCreate(data) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record: data })
+      });
+      if (!res.ok) throw new Error('Không lưu được dữ liệu');
+      return (await res.json()).record;
+    }
+    async function apiUpdate(id, data) {
+      const res = await fetch(API_BASE + '/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record: data })
+      });
+      if (!res.ok) throw new Error('Không cập nhật được dữ liệu');
+      return (await res.json()).record;
+    }
+
+    async function loadData() {
+      document.getElementById('loadingNote').style.display = 'block';
+      try {
+        const res = await fetch(API_BASE);
+        if (!res.ok) throw new Error('Không tải được dữ liệu');
+        const body = await res.json();
+        const records = body.records || [];
+        employees = records.filter(r => r.kind === 'employee' && !r.deleted)
+          .map(r => ({ id: r.id, name: r.name, rateBands: Array.isArray(r.rateBands) ? r.rateBands : undefined, baseRate: r.baseRate }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+        shifts = records.filter(r => r.kind === 'shift' && !r.deleted)
+          .map(r => ({ id: r.id, employee: r.employee, date: r.date, start: r.start, end: r.end, note: r.note || '' }));
+      } catch (err) {
+        alert(err.message || 'Không tải được dữ liệu, vui lòng tải lại trang.');
+      } finally {
+        document.getElementById('loadingNote').style.display = 'none';
+        render();
+      }
+    }
+
+    async function addEmployee() {
+      const name = document.getElementById('employeeName').value.trim();
+      if (!name) return alert('Vui lòng nhập tên nhân viên.');
+      if (employees.some(e => e.name === name)) return alert('Nhân viên đã tồn tại.');
+      try {
+        await apiCreate({ kind: 'employee', name: name });
+        document.getElementById('employeeName').value = '';
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+    async function removeEmployee(id, name) {
+      if (shifts.some(s => s.employee === name)) return alert('Nhân viên đang có ca làm. Hãy xóa hoặc chuyển ca trước.');
+      if (!confirm('Xóa nhân viên ' + name + '?')) return;
+      try {
+        await apiUpdate(id, { kind: 'employee', name: name, deleted: true });
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+
+    function escapeAttr(value) { return String(value == null ? '' : value).replaceAll('"', '&quot;'); }
+    function bandRowHtml(band) {
+      band = band || {};
+      return `<div class="band-row">
+    <div><label>Tên ca</label><input class="rbLabel" value="${escapeAttr(band.label)}" placeholder="Ví dụ: Ca tối" /></div>
+    <div><label>Bắt đầu</label><input type="time" class="rbStart" value="${band.start || '08:00'}" /></div>
+    <div><label>Kết thúc</label><input type="time" class="rbEnd" value="${band.end || '12:00'}" /></div>
+    <div><label>Đ/giờ</label><input type="number" class="rbRate" min="0" step="1000" value="${Number.isFinite(band.rate) ? band.rate : ''}" /></div>
+    <button type="button" class="danger mini" title="Xóa khung giờ" onclick="this.closest('.band-row').remove()">×</button>
+  </div>`;
+    }
+    function addRateBandRow(band) {
+      document.getElementById('rateBandList').insertAdjacentHTML('beforeend', bandRowHtml(band));
+    }
+    function openRateModal(id) {
+      const emp = employees.find(e => e.id === id);
+      if (!emp) return;
+      const { bands, base } = employeeRateConfig(emp.name);
+      document.getElementById('rateEmployeeId').value = emp.id;
+      document.getElementById('rateEmployeeName').textContent = emp.name;
+      document.getElementById('rateBandList').innerHTML = '';
+      bands.forEach(band => addRateBandRow(band));
+      document.getElementById('rateBase').value = base;
+      document.getElementById('rateModal').classList.add('open');
+    }
+    function closeRateModal() { document.getElementById('rateModal').classList.remove('open'); }
+    async function saveRate() {
+      const id = document.getElementById('rateEmployeeId').value;
+      const emp = employees.find(e => e.id === id);
+      if (!emp) return;
+
+      const bands = [...document.querySelectorAll('#rateBandList .band-row')].map(row => ({
+        label: row.querySelector('.rbLabel').value.trim(),
+        start: row.querySelector('.rbStart').value,
+        end: row.querySelector('.rbEnd').value,
+        rate: Number(row.querySelector('.rbRate').value)
+      }));
+      for (const band of bands) {
+        if (!band.start || !band.end) return alert('Vui lòng nhập đủ giờ bắt đầu và kết thúc cho mỗi khung giờ.');
+        if (toMin(band.end) <= toMin(band.start)) return alert('Giờ kết thúc phải sau giờ bắt đầu trong mỗi khung giờ (khung không được qua đêm).');
+        if (!Number.isFinite(band.rate) || band.rate < 0) return alert('Mức lương từng khung giờ phải là số không âm.');
+      }
+      const base = Number(document.getElementById('rateBase').value);
+      if (!Number.isFinite(base) || base < 0) return alert('Mức lương ngoài khung giờ phải là số không âm.');
+
+      try {
+        await apiUpdate(id, { kind: 'employee', name: emp.name, rateBands: bands, baseRate: base });
+        closeRateModal();
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+
+    function openShiftModal(id = '') {
+      if (!employees.length) return alert('Hãy thêm nhân viên trước.');
+      const m = document.getElementById('shiftModal');
+      document.getElementById('shiftEmployee').innerHTML = employees.map(e => `<option>${e.name}</option>`).join('');
+      document.getElementById('shiftId').value = id;
+      if (id) {
+        const s = shifts.find(x => x.id === id);
+        document.getElementById('modalTitle').textContent = 'Sửa ca làm';
+        document.getElementById('shiftEmployee').value = s.employee;
+        document.getElementById('shiftDate').value = s.date;
+        document.getElementById('shiftStart').value = s.start;
+        document.getElementById('shiftEnd').value = s.end;
+        document.getElementById('shiftNote').value = s.note || '';
+      } else {
+        document.getElementById('modalTitle').textContent = 'Thêm ca làm';
+        document.getElementById('shiftDate').value = document.getElementById('weekStart').value;
+        document.getElementById('shiftStart').value = '08:00';
+        document.getElementById('shiftEnd').value = '12:00';
+        document.getElementById('shiftNote').value = '';
+      }
+      m.classList.add('open');
+    }
+    function closeShiftModal() { document.getElementById('shiftModal').classList.remove('open'); }
+    async function saveShift() {
+      const id = document.getElementById('shiftId').value;
+      const shift = {
+        kind: 'shift',
+        employee: document.getElementById('shiftEmployee').value,
+        date: document.getElementById('shiftDate').value,
+        start: document.getElementById('shiftStart').value,
+        end: document.getElementById('shiftEnd').value,
+        note: document.getElementById('shiftNote').value.trim()
+      };
+      if (!shift.date || !shift.start || !shift.end) return alert('Vui lòng nhập đủ ngày và giờ.');
+      try {
+        if (id) await apiUpdate(id, shift);
+        else await apiCreate(shift);
+        closeShiftModal();
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+    async function deleteShift(id) {
+      const s = shifts.find(x => x.id === id);
+      if (!s || !confirm('Xóa ca này?')) return;
+      try {
+        await apiUpdate(id, { kind: 'shift', employee: s.employee, date: s.date, start: s.start, end: s.end, note: s.note, deleted: true });
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+    async function duplicateShift(id) {
+      const s = shifts.find(x => x.id === id);
+      if (!s) return;
+      const d = new Date(s.date); d.setDate(d.getDate() + 1);
+      try {
+        await apiCreate({ kind: 'shift', employee: s.employee, date: iso(d), start: s.start, end: s.end, note: s.note || '' });
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+
+    function renderEmployees() {
+      const el = document.getElementById('employeeList');
+      el.innerHTML = employees.map(emp => {
+        const { bands, base, isCustom } = employeeRateConfig(emp.name);
+        const shiftCount = shifts.filter(s => s.employee === emp.name).length;
+        const rateLabel = (isCustom ? `${bands.length} khung giờ riêng` : 'mức mặc định') + ` · còn lại ${Math.round(base / 1000)}k/h`;
+        return `
+    <div class="employee-item">
+      <div><strong>${emp.name}</strong><br><small>${shiftCount} ca đã xếp · ${rateLabel}</small></div>
+      <div class="employee-actions">
+        <button class="ghost mini" onclick="openRateModal('${emp.id}')">Sửa lương</button>
+        <button class="danger mini" onclick="removeEmployee('${emp.id}','${emp.name.replaceAll("'", "\\'")}')">Xóa</button>
+      </div>
+    </div>`;
+      }).join('') || '<div class="muted">Chưa có nhân viên.</div>';
+    }
+
+    function currentWeekDates() {
+      const start = new Date(document.getElementById('weekStart').value);
+      return Array.from({ length: 7 }, (_, i) => dateAdd(start, i));
+    }
+    function renderSchedule() {
+      const dates = currentWeekDates();
+      const table = document.getElementById('scheduleTable');
+      let html = '<thead><tr><th>Nhân viên</th>';
+      dates.forEach((d, i) => html += `<th class="day">${DAYS[i]}<br><span class="muted">${d.toLocaleDateString('vi-VN')}</span></th>`);
+      html += '</tr></thead><tbody>';
+      employees.forEach(emp => {
+        html += `<tr><th>${emp.name}</th>`;
+        dates.forEach(d => {
+          const ds = iso(d);
+          const dayShifts = shifts.filter(s => s.employee === emp.name && s.date === ds).sort((a, b) => a.start.localeCompare(b.start));
+          html += '<td>';
+          html += dayShifts.map(s => `
+        <div class="shift">
+          <strong>${s.start}–${s.end}</strong>
+          <div>${(getShiftMinutes(s) / 60).toFixed(2)} giờ · <span class="money">${fmtMoney(calcShiftPay(s))}</span></div>
+          ${s.note ? `<div class="muted">${s.note}</div>` : ''}
+          <div class="shift-actions">
+            <button class="ghost mini" onclick="openShiftModal('${s.id}')">Sửa</button>
+            <button class="ghost mini" onclick="duplicateShift('${s.id}')">+1 ngày</button>
+            <button class="danger mini" onclick="deleteShift('${s.id}')">Xóa</button>
+          </div>
+        </div>`).join('');
+          html += `<button class="ghost mini" onclick="openPreset('${emp.name.replaceAll("'", "\\'")}','${ds}')">+ Ca</button>`;
+          html += '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      table.innerHTML = html;
+    }
+    function openPreset(emp, date) {
+      openShiftModal();
+      document.getElementById('shiftEmployee').value = emp;
+      document.getElementById('shiftDate').value = date;
+    }
+    function renderSummary() {
+      const dates = currentWeekDates().map(iso);
+      const weekly = shifts.filter(s => dates.includes(s.date));
+      let totalPay = 0, totalMinutes = 0;
+      let html = '<thead><tr><th>Nhân viên</th><th>Số ca</th><th>Tổng giờ</th><th>Lương tuần</th></tr></thead><tbody>';
+      employees.forEach(emp => {
+        const arr = weekly.filter(s => s.employee === emp.name);
+        const mins = arr.reduce((a, s) => a + getShiftMinutes(s), 0);
+        const pay = arr.reduce((a, s) => a + calcShiftPay(s), 0);
+        totalPay += pay; totalMinutes += mins;
+        html += `<tr><td><strong>${emp.name}</strong></td><td>${arr.length}</td><td>${(mins / 60).toFixed(2)}</td><td class="money">${fmtMoney(pay)}</td></tr>`;
+      });
+      html += `<tr><th>Tổng</th><th>${weekly.length}</th><th>${(totalMinutes / 60).toFixed(2)}</th><th class="money">${fmtMoney(totalPay)}</th></tr></tbody>`;
+      document.getElementById('summaryTable').innerHTML = html;
+      document.getElementById('kpiShifts').textContent = weekly.length;
+      document.getElementById('kpiHours').textContent = (totalMinutes / 60).toFixed(2);
+      document.getElementById('kpiPay').textContent = fmtMoney(totalPay);
+    }
+    function render() { renderEmployees(); renderSchedule(); renderSummary(); }
+
+    function goToday() {
+      document.getElementById('weekStart').value = iso(mondayOf(new Date()));
+      render();
+    }
+    function exportCSV() {
+      const dates = currentWeekDates().map(iso);
+      const rows = [['Nhân viên', 'Ngày', 'Bắt đầu', 'Kết thúc', 'Số giờ', 'Tiền lương', 'Ghi chú']];
+      shifts.filter(s => dates.includes(s.date)).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
+        .forEach(s => rows.push([s.employee, s.date, s.start, s.end, (getShiftMinutes(s) / 60).toFixed(2), Math.round(calcShiftPay(s)), s.note || '']));
+      const csv = '\ufeff' + rows.map(r => r.map(v => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'luong-tuan-' + document.getElementById('weekStart').value + '.csv'; a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('weekStart').addEventListener('change', render);
+    document.getElementById('shiftModal').addEventListener('click', e => { if (e.target.id === 'shiftModal') closeShiftModal(); });
+    document.getElementById('rateModal').addEventListener('click', e => { if (e.target.id === 'rateModal') closeRateModal(); });
+
+    document.getElementById('weekStart').value = iso(mondayOf(new Date()));
+    loadData();
+
+    window.addEmployee = addEmployee;
+    window.removeEmployee = removeEmployee;
+    window.openRateModal = openRateModal;
+    window.closeRateModal = closeRateModal;
+    window.saveRate = saveRate;
+    window.addRateBandRow = addRateBandRow;
+    window.openShiftModal = openShiftModal;
+    window.closeShiftModal = closeShiftModal;
+    window.saveShift = saveShift;
+    window.deleteShift = deleteShift;
+    window.duplicateShift = duplicateShift;
+    window.openPreset = openPreset;
+    window.goToday = goToday;
+    window.exportCSV = exportCSV;
+  })();
+</script>

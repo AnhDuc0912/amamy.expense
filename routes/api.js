@@ -30,7 +30,8 @@ var pageRecordTypes = [
   'chi-tieu-van-hanh',
   'chi-tieu-noi-bo',
   'doanh-thu-gia-von',
-  'doanh-thu'
+  'doanh-thu',
+  'lich-lam-tu-van'
 ];
 
 function currentMonth() {
