@@ -222,6 +222,19 @@
     font-size: 12px
   }
 
+  .lltv .mini-sm {
+    padding: 2px 5px;
+    font-size: 10px
+  }
+
+  .lltv .grid.sidebar-collapsed {
+    grid-template-columns: 1fr
+  }
+
+  .lltv .grid.sidebar-collapsed aside {
+    display: none
+  }
+
   .lltv .summary {
     margin-top: 18px
   }
@@ -334,9 +347,11 @@
 <div class="lltv">
   <h1>Xếp lịch tư vấn &amp; tính lương theo giờ</h1>
   <div class="sub">Dữ liệu được lưu chung trên hệ thống, không cần mật khẩu để xem hoặc chỉnh sửa.</div>
+  <button type="button" class="ghost" id="toggleSidebarBtn" onclick="toggleSidebar()" style="margin-bottom:12px">☰
+    Ẩn danh sách nhân viên</button>
   <div class="loading" id="loadingNote">Đang tải dữ liệu...</div>
 
-  <div class="grid">
+  <div class="grid" id="mainGrid">
     <aside class="card">
       <h2>Nhân viên</h2>
       <label>Tên nhân viên</label>
@@ -362,9 +377,14 @@
             <label>Tuần bắt đầu</label>
             <input type="date" id="weekStart" />
           </div>
+          <div>
+            <label>Lọc theo tháng</label>
+            <input type="month" id="monthFilter" />
+          </div>
           <button class="primary" onclick="openShiftModal()">+ Thêm ca</button>
           <button class="ghost" onclick="goToday()">Tuần hiện tại</button>
           <button class="ghost" onclick="exportCSV()">Xuất CSV lương</button>
+          <button class="ghost" id="toggleMoneyBtn" onclick="toggleMoney()">👁 Hiện lương ca</button>
         </div>
 
         <div class="kpis">
@@ -457,11 +477,28 @@
       { label: 'Ca sáng', start: '06:00', end: '08:00', rate: 28000 }
     ];
     const DEFAULT_BASE_RATE = 25000;
+    const SHIFT_COLORS = [
+      { border: '#bfdbfe', bg: '#eff6ff' },
+      { border: '#bbf7d0', bg: '#f0fdf4' },
+      { border: '#ddd6fe', bg: '#f5f3ff' },
+      { border: '#fed7aa', bg: '#fff7ed' },
+      { border: '#fbcfe8', bg: '#fdf2f8' },
+      { border: '#99f6e4', bg: '#f0fdfa' },
+      { border: '#fde68a', bg: '#fffbeb' },
+      { border: '#c7d2fe', bg: '#eef2ff' }
+    ];
 
     let employees = [];
     let shifts = [];
     let defaultRate = { bands: DEFAULT_BANDS, base: DEFAULT_BASE_RATE };
     let defaultRateId = null;
+    let moneyVisible = false;
+
+    function employeeColor(name) {
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+      return SHIFT_COLORS[hash % SHIFT_COLORS.length];
+    }
 
     function fmtMoney(n) { return Math.round(n).toLocaleString('vi-VN') + 'đ'; }
     function toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
@@ -715,16 +752,6 @@
         await loadData();
       } catch (err) { alert(err.message); }
     }
-    async function duplicateShift(id) {
-      const s = shifts.find(x => x.id === id);
-      if (!s) return;
-      const d = parseISO(s.date); d.setDate(d.getDate() + 1);
-      try {
-        await apiCreate({ kind: 'shift', employee: s.employee, date: iso(d), start: s.start, end: s.end, note: s.note || '' });
-        await loadData();
-      } catch (err) { alert(err.message); }
-    }
-
     function renderEmployees() {
       const el = document.getElementById('employeeList');
       el.innerHTML = employees.map(emp => {
@@ -760,20 +787,20 @@
       dates.forEach(d => html += `<th class="day">${DAYS[d.getDay()]}<br><span class="muted">${d.toLocaleDateString('vi-VN')}</span></th>`);
       html += '</tr></thead><tbody>';
       employees.forEach(emp => {
+        const color = employeeColor(emp.name);
         html += `<tr><th>${emp.name}</th>`;
         dates.forEach(d => {
           const ds = iso(d);
           const dayShifts = shifts.filter(s => s.employee === emp.name && s.date === ds).sort((a, b) => a.start.localeCompare(b.start));
           html += '<td>';
           html += dayShifts.map(s => `
-        <div class="shift">
+        <div class="shift" style="border-color:${color.border};background:${color.bg}">
           <strong>${s.start}–${s.end}</strong>
-          <div>${(getShiftMinutes(s) / 60).toFixed(2)} giờ · <span class="money">${fmtMoney(calcShiftPay(s))}</span></div>
+          <div>${(getShiftMinutes(s) / 60).toFixed(2)} giờ · <span class="money">${moneyVisible ? fmtMoney(calcShiftPay(s)) : '•••'}</span></div>
           ${s.note ? `<div class="muted">${s.note}</div>` : ''}
           <div class="shift-actions">
-            <button class="ghost mini" onclick="openShiftModal('${s.id}')">Sửa</button>
-            <button class="ghost mini" onclick="duplicateShift('${s.id}')">+1 ngày</button>
-            <button class="danger mini" onclick="deleteShift('${s.id}')">Xóa</button>
+            <button class="ghost mini-sm" onclick="openShiftModal('${s.id}')">Sửa</button>
+            <button class="danger mini-sm" onclick="deleteShift('${s.id}')">Xóa</button>
           </div>
         </div>`).join('');
           html += `<button class="ghost mini" onclick="openPreset('${emp.name.replaceAll("'", "\\'")}','${ds}')">+ Ca</button>`;
@@ -809,9 +836,23 @@
     }
     function render() { renderDefaultRates(); renderEmployees(); renderSchedule(); renderSummary(); }
 
+    function syncMonthFilter() {
+      const ws = document.getElementById('weekStart').value;
+      if (ws) document.getElementById('monthFilter').value = ws.slice(0, 7);
+    }
     function goToday() {
       document.getElementById('weekStart').value = iso(mondayOf(new Date()));
+      syncMonthFilter();
       render();
+    }
+    function toggleSidebar() {
+      const collapsed = document.getElementById('mainGrid').classList.toggle('sidebar-collapsed');
+      document.getElementById('toggleSidebarBtn').textContent = collapsed ? '☰ Hiện danh sách nhân viên' : '☰ Ẩn danh sách nhân viên';
+    }
+    function toggleMoney() {
+      moneyVisible = !moneyVisible;
+      document.getElementById('toggleMoneyBtn').textContent = moneyVisible ? '🙈 Ẩn lương ca' : '👁 Hiện lương ca';
+      renderSchedule();
     }
     function exportCSV() {
       const dates = currentWeekDates().map(iso);
@@ -826,12 +867,20 @@
 
     document.getElementById('weekStart').addEventListener('change', function () {
       if (this.value) this.value = iso(mondayOf(parseISO(this.value)));
+      syncMonthFilter();
+      render();
+    });
+    document.getElementById('monthFilter').addEventListener('change', function () {
+      if (!this.value) return;
+      const [y, m] = this.value.split('-').map(Number);
+      document.getElementById('weekStart').value = iso(mondayOf(new Date(y, m - 1, 1)));
       render();
     });
     document.getElementById('shiftModal').addEventListener('click', e => { if (e.target.id === 'shiftModal') closeShiftModal(); });
     document.getElementById('rateModal').addEventListener('click', e => { if (e.target.id === 'rateModal') closeRateModal(); });
 
     document.getElementById('weekStart').value = iso(mondayOf(new Date()));
+    syncMonthFilter();
     loadData();
 
     window.addEmployee = addEmployee;
@@ -844,9 +893,10 @@
     window.closeShiftModal = closeShiftModal;
     window.saveShift = saveShift;
     window.deleteShift = deleteShift;
-    window.duplicateShift = duplicateShift;
     window.openPreset = openPreset;
     window.goToday = goToday;
     window.exportCSV = exportCSV;
+    window.toggleSidebar = toggleSidebar;
+    window.toggleMoney = toggleMoney;
   })();
 </script>
