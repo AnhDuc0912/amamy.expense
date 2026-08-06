@@ -206,7 +206,9 @@
   }
 
   .lltv .shift strong {
-    display: block
+    display: block;
+    font-size: 14px;
+    margin: 0 0 2px
   }
 
   .lltv .shift-actions {
@@ -253,7 +255,7 @@
     font-size: 16px
   }
 
-  .lltv .modal {
+  .lltv.modal {
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, .5);
@@ -264,7 +266,7 @@
     z-index: 20
   }
 
-  .lltv .modal.open {
+  .lltv.modal.open {
     display: flex
   }
 
@@ -344,13 +346,12 @@
       <div class="employee-list" id="employeeList"></div>
 
       <h2 style="margin-top:22px">Mức lương gợi ý (mặc định)</h2>
-      <div class="rates">
-        <div class="rate"><span>04:00–06:00</span><b>40.000đ/h</b></div>
-        <div class="rate"><span>06:00–08:00</span><b>28.000đ/h</b></div>
-        <div class="rate"><span>Còn lại</span><b>25.000đ/h</b></div>
-      </div>
-      <p class="muted" style="font-size:13px">Đây chỉ là gợi ý ban đầu. Mỗi nhân viên có thể có khung giờ và mức lương
-        riêng — bấm "Sửa lương" ở từng bạn để thêm nhiều khung ca, ví dụ: ca sáng 04:00–08:00, ca tối 18:00–23:00,...
+      <div class="rates" id="defaultRatesList"></div>
+      <button type="button" class="ghost" style="width:100%;margin-top:10px" onclick="openRateModal('default')">Sửa
+        mức mặc định</button>
+      <p class="muted" style="font-size:13px">Đây chỉ là gợi ý ban đầu, có thể sửa. Mỗi nhân viên có thể có khung giờ
+        và mức lương riêng — bấm "Sửa lương" ở từng bạn để thêm nhiều khung ca, ví dụ: ca sáng 04:00–08:00, ca tối
+        18:00–23:00,...
       </p>
     </aside>
 
@@ -448,7 +449,7 @@
 
 <script>
   (function () {
-    const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+    const DAYS = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
     const PAGE = 'lich-lam-tu-van';
     const API_BASE = '/api/page-records/' + PAGE;
     const DEFAULT_BANDS = [
@@ -459,10 +460,18 @@
 
     let employees = [];
     let shifts = [];
+    let defaultRate = { bands: DEFAULT_BANDS, base: DEFAULT_BASE_RATE };
+    let defaultRateId = null;
 
     function fmtMoney(n) { return Math.round(n).toLocaleString('vi-VN') + 'đ'; }
     function toMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-    function iso(d) { return d.toISOString().slice(0, 10); }
+    function iso(d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function parseISO(s) {
+      const [y, m, d] = s.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
     function mondayOf(date) {
       const d = new Date(date); d.setHours(0, 0, 0, 0);
       const day = d.getDay() || 7;
@@ -480,10 +489,10 @@
 
     function employeeRateConfig(employeeName) {
       const emp = employees.find(e => e.name === employeeName);
-      if (!emp) return { bands: DEFAULT_BANDS, base: DEFAULT_BASE_RATE, isCustom: false };
+      if (!emp) return { bands: defaultRate.bands, base: defaultRate.base, isCustom: false };
       return {
-        bands: Array.isArray(emp.rateBands) ? emp.rateBands : DEFAULT_BANDS,
-        base: Number.isFinite(emp.baseRate) ? emp.baseRate : DEFAULT_BASE_RATE,
+        bands: Array.isArray(emp.rateBands) ? emp.rateBands : defaultRate.bands,
+        base: Number.isFinite(emp.baseRate) ? emp.baseRate : defaultRate.base,
         isCustom: Array.isArray(emp.rateBands)
       };
     }
@@ -551,6 +560,17 @@
           .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
         shifts = records.filter(r => r.kind === 'shift' && !r.deleted)
           .map(r => ({ id: r.id, employee: r.employee, date: r.date, start: r.start, end: r.end, note: r.note || '' }));
+        const settingsRecord = records.find(r => r.kind === 'settings' && !r.deleted);
+        if (settingsRecord) {
+          defaultRateId = settingsRecord.id;
+          defaultRate = {
+            bands: Array.isArray(settingsRecord.rateBands) ? settingsRecord.rateBands : DEFAULT_BANDS,
+            base: Number.isFinite(settingsRecord.baseRate) ? settingsRecord.baseRate : DEFAULT_BASE_RATE
+          };
+        } else {
+          defaultRateId = null;
+          defaultRate = { bands: DEFAULT_BANDS, base: DEFAULT_BASE_RATE };
+        }
       } catch (err) {
         alert(err.message || 'Không tải được dữ liệu, vui lòng tải lại trang.');
       } finally {
@@ -593,11 +613,20 @@
       document.getElementById('rateBandList').insertAdjacentHTML('beforeend', bandRowHtml(band));
     }
     function openRateModal(id) {
-      const emp = employees.find(e => e.id === id);
-      if (!emp) return;
-      const { bands, base } = employeeRateConfig(emp.name);
-      document.getElementById('rateEmployeeId').value = emp.id;
-      document.getElementById('rateEmployeeName').textContent = emp.name;
+      const isDefault = id === 'default';
+      let bands, base, title;
+      if (isDefault) {
+        bands = defaultRate.bands;
+        base = defaultRate.base;
+        title = 'mặc định (áp dụng cho nhân viên chưa có mức riêng)';
+      } else {
+        const emp = employees.find(e => e.id === id);
+        if (!emp) return;
+        ({ bands, base } = employeeRateConfig(emp.name));
+        title = emp.name;
+      }
+      document.getElementById('rateEmployeeId').value = id;
+      document.getElementById('rateEmployeeName').textContent = title;
       document.getElementById('rateBandList').innerHTML = '';
       bands.forEach(band => addRateBandRow(band));
       document.getElementById('rateBase').value = base;
@@ -606,8 +635,9 @@
     function closeRateModal() { document.getElementById('rateModal').classList.remove('open'); }
     async function saveRate() {
       const id = document.getElementById('rateEmployeeId').value;
-      const emp = employees.find(e => e.id === id);
-      if (!emp) return;
+      const isDefault = id === 'default';
+      const emp = isDefault ? null : employees.find(e => e.id === id);
+      if (!isDefault && !emp) return;
 
       const bands = [...document.querySelectorAll('#rateBandList .band-row')].map(row => ({
         label: row.querySelector('.rbLabel').value.trim(),
@@ -624,7 +654,13 @@
       if (!Number.isFinite(base) || base < 0) return alert('Mức lương ngoài khung giờ phải là số không âm.');
 
       try {
-        await apiUpdate(id, { kind: 'employee', name: emp.name, rateBands: bands, baseRate: base });
+        if (isDefault) {
+          const data = { kind: 'settings', name: 'default-rate', rateBands: bands, baseRate: base };
+          if (defaultRateId) await apiUpdate(defaultRateId, data);
+          else await apiCreate(data);
+        } else {
+          await apiUpdate(id, { kind: 'employee', name: emp.name, rateBands: bands, baseRate: base });
+        }
         closeRateModal();
         await loadData();
       } catch (err) { alert(err.message); }
@@ -682,7 +718,7 @@
     async function duplicateShift(id) {
       const s = shifts.find(x => x.id === id);
       if (!s) return;
-      const d = new Date(s.date); d.setDate(d.getDate() + 1);
+      const d = parseISO(s.date); d.setDate(d.getDate() + 1);
       try {
         await apiCreate({ kind: 'shift', employee: s.employee, date: iso(d), start: s.start, end: s.end, note: s.note || '' });
         await loadData();
@@ -706,15 +742,22 @@
       }).join('') || '<div class="muted">Chưa có nhân viên.</div>';
     }
 
+    function renderDefaultRates() {
+      const el = document.getElementById('defaultRatesList');
+      const rows = defaultRate.bands.map(b => `<div class="rate"><span>${b.label ? b.label + ' · ' : ''}${b.start}–${b.end}</span><b>${fmtMoney(b.rate)}/h</b></div>`);
+      rows.push(`<div class="rate"><span>Còn lại</span><b>${fmtMoney(defaultRate.base)}/h</b></div>`);
+      el.innerHTML = rows.join('');
+    }
+
     function currentWeekDates() {
-      const start = new Date(document.getElementById('weekStart').value);
+      const start = parseISO(document.getElementById('weekStart').value);
       return Array.from({ length: 7 }, (_, i) => dateAdd(start, i));
     }
     function renderSchedule() {
       const dates = currentWeekDates();
       const table = document.getElementById('scheduleTable');
       let html = '<thead><tr><th>Nhân viên</th>';
-      dates.forEach((d, i) => html += `<th class="day">${DAYS[i]}<br><span class="muted">${d.toLocaleDateString('vi-VN')}</span></th>`);
+      dates.forEach(d => html += `<th class="day">${DAYS[d.getDay()]}<br><span class="muted">${d.toLocaleDateString('vi-VN')}</span></th>`);
       html += '</tr></thead><tbody>';
       employees.forEach(emp => {
         html += `<tr><th>${emp.name}</th>`;
@@ -764,7 +807,7 @@
       document.getElementById('kpiHours').textContent = (totalMinutes / 60).toFixed(2);
       document.getElementById('kpiPay').textContent = fmtMoney(totalPay);
     }
-    function render() { renderEmployees(); renderSchedule(); renderSummary(); }
+    function render() { renderDefaultRates(); renderEmployees(); renderSchedule(); renderSummary(); }
 
     function goToday() {
       document.getElementById('weekStart').value = iso(mondayOf(new Date()));
@@ -781,7 +824,10 @@
       URL.revokeObjectURL(a.href);
     }
 
-    document.getElementById('weekStart').addEventListener('change', render);
+    document.getElementById('weekStart').addEventListener('change', function () {
+      if (this.value) this.value = iso(mondayOf(parseISO(this.value)));
+      render();
+    });
     document.getElementById('shiftModal').addEventListener('click', e => { if (e.target.id === 'shiftModal') closeShiftModal(); });
     document.getElementById('rateModal').addEventListener('click', e => { if (e.target.id === 'rateModal') closeRateModal(); });
 
