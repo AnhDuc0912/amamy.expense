@@ -199,7 +199,7 @@ function sumStoreExpenses(records) {
 
 function render() {
   const revenueA = sumRevenueCost(sourceData.doanhThu);
-  const revenueB = sumRevenueCost(sourceData.doanhThuGiaVon);
+  const revenueB = sumRevenueCost(sourceData.doanhThuGiaVon.filter(r => !r.pushed));
   const totalRevenue = revenueA.revenue + revenueB.revenue;
   const totalCost = revenueA.cost + revenueB.cost;
   const storeFee = sumStoreExpenses(sourceData.expenses);

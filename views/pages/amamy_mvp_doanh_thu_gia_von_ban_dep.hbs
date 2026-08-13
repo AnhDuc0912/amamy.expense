@@ -39,6 +39,7 @@
   .mvp-page .money-profit,.mvp-page .margin{color:var(--green);font-weight:800}
   .mvp-page .money-profit.negative,.mvp-page .margin.negative{color:var(--red)}
   .mvp-page .row-actions{display:flex;justify-content:center;gap:7px}
+  .mvp-page .pushed-badge{display:inline-block;font-size:11px;font-weight:800;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:2px 6px;margin-left:6px}
   .mvp-page .edit{color:#2563eb;border:1px solid #93c5fd;background:#eff6ff;padding:7px 10px}
   .mvp-page .delete{color:var(--red);border:1px solid #fca5a5;background:#fff1f2;padding:7px 10px}
   .mvp-page tfoot td{font-weight:900;background:#f8fbff}
@@ -248,6 +249,7 @@ function normalizeRecord(record) {
     kg: Number(record.kg) || 0,
     revenue: Number(record.revenue) || 0,
     cost: Number(record.cost) || 0,
+    pushed: Boolean(record.pushed),
     createdAt: record.createdAt || ""
   };
 }
@@ -337,8 +339,8 @@ function render(){
       const profitVal=profit(r), marginVal=margin(r);
       return `
       <tr>
-        <td class="select-col"><input type="checkbox" class="rowCheckbox" onchange="toggleSelectRow('${r.id}', this.checked)" ${selectedIds.has(r.id)?"checked":""}></td>
-        <td>${escapeHtml(r.date)}</td>
+        <td class="select-col">${r.pushed ? "" : `<input type="checkbox" class="rowCheckbox" onchange="toggleSelectRow('${r.id}', this.checked)" ${selectedIds.has(r.id)?"checked":""}>`}</td>
+        <td>${escapeHtml(r.date)}${r.pushed ? ' <span class="pushed-badge">Đã đẩy</span>' : ""}</td>
         <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
         <td>${fmt(r.packages)}</td>
         <td>${fmt(r.kg)}</td>
@@ -371,19 +373,20 @@ function toggleSelectRow(id, checked){
   updateSelectionUI(records.filter(r=>matchesFilters(r)));
 }
 function toggleSelectAll(checked){
-  records.filter(r=>matchesFilters(r)).forEach(r=>{
+  records.filter(r=>matchesFilters(r) && !r.pushed).forEach(r=>{
     if(checked) selectedIds.add(r.id); else selectedIds.delete(r.id);
   });
   render();
 }
 function updateSelectionUI(filtered){
-  const selectedCount = filtered.filter(r=>selectedIds.has(r.id)).length;
+  const selectable = filtered.filter(r=>!r.pushed);
+  const selectedCount = selectable.filter(r=>selectedIds.has(r.id)).length;
   const label = document.getElementById("pushToDoanhThuLabel");
   if(label) label.textContent = selectedCount ? `Trang Doanh thu (${selectedCount} dòng)` : "Trang Doanh thu";
   const selectAll = document.getElementById("selectAllCheckbox");
   if(selectAll){
-    selectAll.checked = filtered.length>0 && selectedCount===filtered.length;
-    selectAll.indeterminate = selectedCount>0 && selectedCount<filtered.length;
+    selectAll.checked = selectable.length>0 && selectedCount===selectable.length;
+    selectAll.indeterminate = selectedCount>0 && selectedCount<selectable.length;
   }
 }
 async function addRecord(){
@@ -410,7 +413,7 @@ function closeModal(){modal.classList.remove("show");editId=null}
 async function saveEdit(){
   const i=records.findIndex(x=>x.id===editId); if(i<0)return;
   const updated={date:eDate.value,route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
-    revenue:parseMoney(eRevenue.value),cost:parseMoney(eCost.value)};
+    revenue:parseMoney(eRevenue.value),cost:parseMoney(eCost.value),pushed:records[i].pushed};
   try {
     await updateRecord(editId, updated);
     render();closeModal();toast("Đã cập nhật dữ liệu.");
@@ -459,8 +462,8 @@ function exportCSV(){
   URL.revokeObjectURL(a.href);
 }
 async function pushToDoanhThuPage(){
-  const selected=records.filter(r=>selectedIds.has(r.id));
-  if(!selected.length){toast("Vui lòng chọn ít nhất một dòng để đẩy.");return}
+  const selected=records.filter(r=>selectedIds.has(r.id) && !r.pushed);
+  if(!selected.length){toast("Vui lòng chọn ít nhất một dòng chưa đẩy.");return}
   if(!confirm(`Đẩy ${selected.length} dòng đã chọn sang trang Doanh thu?`))return;
   let success=0;
   for(const r of selected){
@@ -470,6 +473,7 @@ async function pushToDoanhThuPage(){
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({record:{date:r.date,route:r.route,packages:r.packages,kg:r.kg,revenue:r.revenue,cost:r.cost}})
       });
+      await updateRecord(r.id, {date:r.date,route:r.route,packages:r.packages,kg:r.kg,revenue:r.revenue,cost:r.cost,pushed:true});
       selectedIds.delete(r.id);
       success++;
     } catch (error) {
@@ -477,7 +481,7 @@ async function pushToDoanhThuPage(){
       break;
     }
   }
-  if(success){ render(); toast(`Đã đẩy ${success} dòng sang trang Doanh thu.`); }
+  if(success){ render(); toast(`Đã đẩy ${success} dòng sang trang Doanh thu. Các dòng này sẽ không bị tính trùng ở Báo cáo.`); }
 }
 function toast(msg){
   const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
