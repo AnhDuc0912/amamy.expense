@@ -6,7 +6,7 @@ var DOANH_THU_COOKIE = 'doanhThuAccess';
 var DOANH_THU_COOKIE_MAX_AGE = 12 * 60 * 60 * 1000;
 var DOANH_THU_PROTECTED_PAGES = {
   '/doanh-thu': { title: 'Amamy - Doanh thu', navDoanhThuChiTiet: true, pageLabel: 'Doanh thu' },
-  '/doanh-thu-gia-von': { title: 'Amamy - Doanh thu và giá vốn', navDoanhThu: true, pageLabel: 'Doanh thu & giá vốn' },
+  '/doanh-thu-gia-von': { title: 'Amamy - Báo cáo lãi gộp', navDoanhThu: true, pageLabel: 'Báo cáo lãi gộp' },
   '/bao-cao-hoat-dong-kinh-doanh': { title: 'Amamy - Báo cáo hoạt động kinh doanh', navBaoCao: true, pageLabel: 'Báo cáo hoạt động kinh doanh' }
 };
 
@@ -65,6 +65,13 @@ router.get('/chi-tieu-van-hanh', function(req, res) {
   });
 });
 
+router.get('/gia-von', function(req, res) {
+  res.render('pages/amamy_mvp_gia_von', {
+    title: 'Amamy - Giá vốn',
+    navGiaVon: true
+  });
+});
+
 router.get('/lich-lam-tu-van', function(req, res) {
   res.render('pages/mvp_xep_lich_tinh_luong', {
     title: 'Amamy - Lịch làm tư vấn',
@@ -77,7 +84,7 @@ router.get('/doanh-thu-gia-von', function(req, res) {
     return renderDoanhThuLogin(req, res, '/doanh-thu-gia-von');
   }
   res.render('pages/amamy_mvp_doanh_thu_gia_von_ban_dep', {
-    title: 'Amamy - Doanh thu và giá vốn',
+    title: 'Amamy - Báo cáo lãi gộp',
     navDoanhThu: true
   });
 });

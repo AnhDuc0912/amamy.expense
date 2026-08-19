@@ -147,6 +147,17 @@
       border-radius: 14px;
       box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
     }
+    .summaryTabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .summaryTabBtn {
+      width: auto;
+      margin: 0;
+      padding: 9px 16px;
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+    }
+    .summaryTabBtn:hover { background: #e2e8f0; }
+    .summaryTabBtn.active { background: #2563eb; color: white; }
     .topFilters button { width: auto; margin: 0; }
     .topFilters { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
     .topFilterActions { min-width: 0; }
@@ -290,25 +301,75 @@
         </div>
       </section>
 
-      <div class="tableScroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Ngày</th>
-            <th>Người chi</th>
-            <th>Chiều</th>
-            <th>Mục</th>
-            <th>Lý do</th>
-            <th>Amamy hoàn</th>
-            <th>Đối tác hoàn</th>
-            <th>Trạng thái</th>
-            <th>Lỗ thực tế</th>
-            <th>Ghi chú</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+      <div class="summaryTabs">
+        <button type="button" class="summaryTabBtn active" data-maintab="detail" onclick="switchMainTab('detail')">Bảng chi tiết</button>
+        <button type="button" class="summaryTabBtn" data-maintab="stats" onclick="switchMainTab('stats')">Bảng thống kê</button>
+      </div>
+
+      <div id="mainTabDetail" class="summaryTabPanel">
+        <div class="tableScroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>Người chi</th>
+              <th>Chiều</th>
+              <th>Mục</th>
+              <th>Lý do</th>
+              <th>Amamy hoàn</th>
+              <th>Đối tác hoàn</th>
+              <th>Trạng thái</th>
+              <th>Lỗ thực tế</th>
+              <th>Ghi chú</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        </div>
+      </div>
+
+      <div id="mainTabStats" class="summaryTabPanel hidden">
+        <section class="card">
+          <div class="summaryTabs">
+            <button type="button" class="summaryTabBtn active" data-tab="route" onclick="switchSummaryTab('route')">Theo Chiều</button>
+            <button type="button" class="summaryTabBtn" data-tab="category" onclick="switchSummaryTab('category')">Theo Mục</button>
+          </div>
+
+          <div id="summaryTabRoute" class="summaryTabPanel">
+            <div class="tableScroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Chiều</th>
+                    <th>Số phiếu</th>
+                    <th>Amamy hoàn</th>
+                    <th>Đối tác hoàn</th>
+                    <th>Lỗ thực tế</th>
+                  </tr>
+                </thead>
+                <tbody id="summaryByRouteBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="summaryTabCategory" class="summaryTabPanel hidden">
+            <div class="tableScroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Mục</th>
+                    <th>Số phiếu</th>
+                    <th>Amamy hoàn</th>
+                    <th>Đối tác hoàn</th>
+                    <th>Lỗ thực tế</th>
+                  </tr>
+                </thead>
+                <tbody id="summaryByCategoryBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -623,6 +684,40 @@
       `).join("");
 
       renderSummary(filtered);
+      renderGroupTables(filtered);
+    }
+
+    function switchMainTab(tab) {
+      document.querySelectorAll(".summaryTabBtn[data-maintab]").forEach(btn => btn.classList.toggle("active", btn.dataset.maintab === tab));
+      document.getElementById("mainTabDetail").classList.toggle("hidden", tab !== "detail");
+      document.getElementById("mainTabStats").classList.toggle("hidden", tab !== "stats");
+    }
+
+    function switchSummaryTab(tab) {
+      document.querySelectorAll(".summaryTabBtn[data-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.tab === tab));
+      document.getElementById("summaryTabRoute").classList.toggle("hidden", tab !== "route");
+      document.getElementById("summaryTabCategory").classList.toggle("hidden", tab !== "category");
+    }
+
+    function renderGroupTables(data) {
+      const buildRows = (keys, keyFn) => keys.map(key => {
+        const rows = data.filter(r => keyFn(r) === key);
+        const sumAmamy = rows.reduce((s, r) => s + r.amamy, 0);
+        const sumPartner = rows.reduce((s, r) => s + (r.status === "Đối tác đã hoàn" ? r.partner : 0), 0);
+        const sumLoss = rows.reduce((s, r) => s + r.loss, 0);
+        return `
+          <tr>
+            <td>${escapeHtml(key)}</td>
+            <td>${rows.length}</td>
+            <td>${money(sumAmamy)}</td>
+            <td>${money(sumPartner)}</td>
+            <td><strong>${money(sumLoss)}</strong></td>
+          </tr>
+        `;
+      }).join("");
+
+      document.getElementById("summaryByRouteBody").innerHTML = buildRows(routes, r => r.route);
+      document.getElementById("summaryByCategoryBody").innerHTML = buildRows(Object.values(categoryLabels), r => r.category);
     }
 
     function renderSummary(data) {

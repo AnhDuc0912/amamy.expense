@@ -1,0 +1,561 @@
+<style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+    .mvp-page {
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+    header {
+      display: block;
+      background: linear-gradient(180deg, var(--blue), var(--blue2));;
+      color: white;
+      padding: 18px 28px;
+      margin: 0 0 18px;
+    }
+    header h1 { margin: 0; font-size: 22px; color: white; overflow-wrap: anywhere; }
+    header p { margin: 6px 0 0; color: #cbd5e1; font-size: 14px; }
+
+    .wrap {
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+      gap: 20px;
+      padding: 20px 0;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .card {
+      background: white;
+      min-width: 0;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+      padding: 18px;
+    }
+    h2 { font-size: 18px; margin: 0 0 16px; }
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin: 14px 0 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+      background: white;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .hidden { display: none; }
+
+    .page-main {
+      min-width: 0;
+      overflow: hidden;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .box {
+      padding: 16px;
+      border-radius: 14px;
+      background: white;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+    }
+    .box span {
+      display: block;
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .box strong { font-size: 20px; }
+
+    button {
+      border: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    button:hover { background: #1d4ed8; }
+    .deleteBtn {
+      width: auto;
+      margin: 0;
+      padding: 7px 10px;
+      background: #dc2626;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    .deleteBtn:hover { background: #b91c1c; }
+
+    table {
+      width: 100%;
+      min-width: 940px;
+      border-collapse: collapse;
+      background: #f7f8fa;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th { background: #f8fafc; color: #334155; }
+    .badge {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      display: inline-block;
+    }
+    .green { background: #dcfce7; color: #166534; }
+    .yellow { background: #fef3c7; color: #92400e; }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .tableScroll {
+      max-width: 100%;
+      overflow-x: auto;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, .08);
+    }
+    .topFilters button { width: auto; margin: 0; }
+    .topFilters { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .topFilterActions { min-width: 0; }
+    .summaryTabs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .summaryTabBtn {
+      width: auto;
+      margin: 0;
+      padding: 9px 16px;
+      background: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+    }
+    .summaryTabBtn:hover { background: #e2e8f0; }
+    .summaryTabBtn.active { background: #2563eb; color: white; }
+    @media (max-width: 1000px) {
+      .wrap { grid-template-columns: minmax(0, 1fr); }
+      .summary { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+<div class="mvp-page">
+<header>
+    <h1>Amamy - Giá vốn</h1>
+    <p>MVP nhập phiếu thanh toán giá vốn (COGS) cho đối tác logistic theo từng chiều vận chuyển</p>
+  </header>
+
+  <div class="wrap">
+    <section class="card">
+      <h2>Tạo phiếu giá vốn</h2>
+
+      <label>Người chi</label>
+      <select id="payer">
+        <option>Long</option>
+      </select>
+
+      <label>Ngày</label>
+      <input id="date" type="date" />
+
+      <label>Chiều</label>
+      <select id="route"></select>
+
+      <label>Đối tác</label>
+      <select id="partner" onchange="renderForm()">
+        <option>Kinkin Logistic</option>
+        <option>VietExpress</option>
+        <option>Expolo</option>
+        <option>Bay Online</option>
+        <option>Huthui Cargo</option>
+        <option>AE Express</option>
+        <option>Đối tác khác</option>
+      </select>
+      <div id="partnerOtherBox" class="hidden">
+        <label>Nhập tên đối tác</label>
+        <input id="partnerOther" placeholder="Tên đối tác khác" />
+      </div>
+
+      <label>Số tiền giá vốn</label>
+      <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 180.000.000" oninput="formatMoneyInput(this); updatePreview();" />
+
+      <label>Trạng thái</label>
+      <select id="status">
+        <option>Đã thanh toán</option>
+        <option>Chưa thanh toán</option>
+      </select>
+
+      <label>Ghi chú</label>
+      <textarea id="note" placeholder="Ghi chú: kỳ thanh toán, mã đơn, nội dung..."></textarea>
+
+      <div class="box" style="margin-top:14px;box-shadow:none;border:1px dashed #cbd5e1;padding:12px;">
+        <span>Số tiền ghi nhận</span>
+        <strong id="amountPreview">0 đ</strong>
+      </div>
+
+      <button onclick="addRecord()">Lưu phiếu</button>
+    </section>
+
+    <div class="page-main">
+      <div class="summary">
+        <div class="box"><span>Tổng giá vốn</span><strong id="sumTotal">0 đ</strong></div>
+        <div class="box"><span>Đã thanh toán</span><strong id="sumPaid">0 đ</strong></div>
+        <div class="box"><span>Chưa thanh toán</span><strong id="sumUnpaid">0 đ</strong></div>
+      </div>
+
+      <section class="topFilters" aria-label="Bộ lọc thời gian" style="margin-bottom:14px;">
+        <label class="dateFilter monthFilter"><span>Tháng</span>
+          <input id="filterMonth" type="text" placeholder="Tất cả tháng" />
+        </label>
+        <label class="dateFilter"><span>Từ ngày</span>
+          <input id="filterDateFrom" type="text" placeholder="Chọn ngày" />
+        </label>
+        <label class="dateFilter"><span>Đến ngày</span>
+          <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+        </label>
+        <div class="filterActions topFilterActions">
+          <button id="applyDateFilter" type="button">Áp dụng</button>
+          <button id="clearDateFilter" type="button" class="filterClear">Xóa lọc</button>
+        </div>
+      </section>
+
+      <section class="card" style="margin-bottom:14px;">
+        <h2>Lọc dữ liệu</h2>
+        <div class="filters">
+          <select id="filterRoute" onchange="renderTable()">
+            <option value="">Tất cả chiều</option>
+          </select>
+          <select id="filterPartner" onchange="renderTable()">
+            <option value="">Tất cả đối tác</option>
+          </select>
+          <select id="filterStatus" onchange="renderTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option>Đã thanh toán</option>
+            <option>Chưa thanh toán</option>
+          </select>
+        </div>
+      </section>
+
+      <div class="summaryTabs">
+        <button type="button" class="summaryTabBtn active" data-maintab="detail" onclick="switchMainTab('detail')">Bảng chi tiết</button>
+        <button type="button" class="summaryTabBtn" data-maintab="stats" onclick="switchMainTab('stats')">Bảng tổng hợp theo Chiều</button>
+      </div>
+
+      <div id="mainTabDetail" class="summaryTabPanel">
+        <div class="tableScroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Ngày</th>
+              <th>Người chi</th>
+              <th>Chiều</th>
+              <th>Đối tác</th>
+              <th>Số tiền</th>
+              <th>Trạng thái</th>
+              <th>Ghi chú</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        </div>
+      </div>
+
+      <div id="mainTabStats" class="summaryTabPanel hidden">
+        <div class="tableScroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Chiều</th>
+                <th>Số phiếu</th>
+                <th>Tổng giá vốn</th>
+                <th>Đã thanh toán</th>
+                <th>Chưa thanh toán</th>
+              </tr>
+            </thead>
+            <tbody id="summaryByRouteBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+  <script>
+    const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Hàng đông lạnh"];
+    const partners = ["Kinkin Logistic","VietExpress","Expolo","Bay Online","Huthui Cargo","AE Express"];
+    const PAGE_RECORD_TYPE = "gia-von";
+    let records = [];
+    let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    let datePickers = {};
+
+    const escapeHtml = value => String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    async function requestJson(url, options) {
+      const response = await fetch(url, options);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Không thể lưu dữ liệu");
+      return payload;
+    }
+
+    async function loadRecords() {
+      const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
+      records = payload.records || [];
+    }
+
+    async function saveRecord(record) {
+      const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record })
+      });
+      records.unshift(payload.record);
+    }
+
+    async function deleteRecord(id) {
+      const actor = prompt("Nhập tên người xoá");
+      if (actor === null) return;
+      if (!actor.trim()) {
+        alert("Vui lòng nhập tên người xoá");
+        return;
+      }
+
+      const password = prompt("Nhập mật khẩu xoá phiếu");
+      if (password === null) return;
+
+      try {
+        await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actor, password })
+        });
+        records = records.filter(record => record.id !== id);
+        renderTable();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    function parseMoneyValue(value) {
+      return Number(String(value || "").replace(/\D/g, "")) || 0;
+    }
+
+    function formatMoneyInput(input) {
+      const raw = input.value.replace(/\D/g, "");
+      if (!raw) {
+        input.value = "";
+        return;
+      }
+      input.value = Number(raw).toLocaleString("vi-VN");
+    }
+
+    function money(n) {
+      return Number(n || 0).toLocaleString("vi-VN") + " đ";
+    }
+
+    function matchesDateFilter(dateStr) {
+      const iso = dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : null;
+      if (!iso) return true;
+      const { month, dateFrom, dateTo } = dateFilters;
+      if (dateFrom || dateTo) {
+        return (!dateFrom || iso >= dateFrom) && (!dateTo || iso <= dateTo);
+      }
+      if (month) return iso.slice(0, 7) === month;
+      return true;
+    }
+
+    function setupDateFilterPickers() {
+      if (typeof flatpickr !== "function") return;
+      const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
+      const commonDateOptions = { altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d", allowInput: true, locale, disableMobile: true };
+
+      if (typeof monthSelectPlugin === "function") {
+        datePickers.month = flatpickr(document.getElementById("filterMonth"), {
+          altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+          plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
+          onChange: function(selectedDates, value) {
+            dateFilters.month = value || "";
+            renderTable();
+          }
+        });
+      }
+      datePickers.from = flatpickr(document.getElementById("filterDateFrom"), commonDateOptions);
+      datePickers.to = flatpickr(document.getElementById("filterDateTo"), commonDateOptions);
+
+      document.getElementById("applyDateFilter").onclick = function() {
+        dateFilters.dateFrom = document.getElementById("filterDateFrom").value;
+        dateFilters.dateTo = document.getElementById("filterDateTo").value;
+        renderTable();
+      };
+      document.getElementById("clearDateFilter").onclick = function() {
+        document.getElementById("filterMonth").value = "";
+        document.getElementById("filterDateFrom").value = "";
+        document.getElementById("filterDateTo").value = "";
+        if (datePickers.month) datePickers.month.clear();
+        if (datePickers.from) datePickers.from.clear();
+        if (datePickers.to) datePickers.to.clear();
+        dateFilters = { month: "", dateFrom: "", dateTo: "" };
+        renderTable();
+      };
+    }
+
+    function initFilters() {
+      const routeSelect = document.getElementById("route");
+      const filterRoute = document.getElementById("filterRoute");
+      routes.forEach(r => {
+        routeSelect.appendChild(new Option(r, r));
+        filterRoute.appendChild(new Option(r, r));
+      });
+
+      const filterPartner = document.getElementById("filterPartner");
+      partners.forEach(p => filterPartner.appendChild(new Option(p, p)));
+    }
+
+    function switchMainTab(tab) {
+      document.querySelectorAll(".summaryTabBtn[data-maintab]").forEach(btn => btn.classList.toggle("active", btn.dataset.maintab === tab));
+      document.getElementById("mainTabDetail").classList.toggle("hidden", tab !== "detail");
+      document.getElementById("mainTabStats").classList.toggle("hidden", tab !== "stats");
+    }
+
+    function renderForm() {
+      document.getElementById("partnerOtherBox").classList.toggle("hidden", document.getElementById("partner").value !== "Đối tác khác");
+    }
+
+    function getPartnerValue() {
+      const val = document.getElementById("partner").value;
+      if (val === "Đối tác khác") return document.getElementById("partnerOther").value || val;
+      return val;
+    }
+
+    function updatePreview() {
+      document.getElementById("amountPreview").textContent = money(parseMoneyValue(document.getElementById("amount").value));
+    }
+
+    async function addRecord() {
+      const amount = parseMoneyValue(document.getElementById("amount").value);
+      if (!amount) {
+        alert("Vui lòng nhập số tiền giá vốn");
+        return;
+      }
+
+      try {
+        await saveRecord({
+          date: document.getElementById("date").value,
+          payer: document.getElementById("payer").value,
+          route: document.getElementById("route").value,
+          partner: getPartnerValue(),
+          amount,
+          status: document.getElementById("status").value,
+          note: document.getElementById("note").value
+        });
+      } catch (error) {
+        alert(error.message);
+        return;
+      }
+
+      document.getElementById("amount").value = "";
+      document.getElementById("note").value = "";
+      updatePreview();
+      renderTable();
+    }
+
+    function badgeClass(status) {
+      return status === "Đã thanh toán" ? "green" : "yellow";
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("tbody");
+      const fr = document.getElementById("filterRoute").value;
+      const fp = document.getElementById("filterPartner").value;
+      const fs = document.getElementById("filterStatus").value;
+
+      const filtered = records.filter(r =>
+        (!fr || r.route === fr) &&
+        (!fp || r.partner === fp) &&
+        (!fs || r.status === fs) &&
+        matchesDateFilter(r.date)
+      );
+
+      tbody.innerHTML = filtered.map(r => `
+        <tr>
+          <td>${escapeHtml(r.date)}</td>
+          <td>${escapeHtml(r.payer)}</td>
+          <td>${escapeHtml(r.route)}</td>
+          <td>${escapeHtml(r.partner)}</td>
+          <td><strong>${money(r.amount)}</strong></td>
+          <td><span class="badge ${badgeClass(r.status)}">${escapeHtml(r.status)}</span></td>
+          <td>${escapeHtml(r.note || "")}</td>
+          <td><button class="deleteBtn" type="button" onclick="deleteRecord('${escapeHtml(r.id)}')">Xoá</button></td>
+        </tr>
+      `).join("");
+
+      renderSummary(filtered);
+      renderGroupTable(filtered);
+    }
+
+    function renderSummary(data) {
+      const total = data.reduce((s, r) => s + r.amount, 0);
+      const paid = data.reduce((s, r) => s + (r.status === "Đã thanh toán" ? r.amount : 0), 0);
+      const unpaid = data.reduce((s, r) => s + (r.status === "Chưa thanh toán" ? r.amount : 0), 0);
+
+      document.getElementById("sumTotal").textContent = money(total);
+      document.getElementById("sumPaid").textContent = money(paid);
+      document.getElementById("sumUnpaid").textContent = money(unpaid);
+    }
+
+    function renderGroupTable(data) {
+      document.getElementById("summaryByRouteBody").innerHTML = routes.map(route => {
+        const rows = data.filter(r => r.route === route);
+        const total = rows.reduce((s, r) => s + r.amount, 0);
+        const paid = rows.reduce((s, r) => s + (r.status === "Đã thanh toán" ? r.amount : 0), 0);
+        const unpaid = rows.reduce((s, r) => s + (r.status === "Chưa thanh toán" ? r.amount : 0), 0);
+        return `
+          <tr>
+            <td>${escapeHtml(route)}</td>
+            <td>${rows.length}</td>
+            <td><strong>${money(total)}</strong></td>
+            <td>${money(paid)}</td>
+            <td>${money(unpaid)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    async function initPage() {
+      initFilters();
+      renderForm();
+      document.getElementById("date").valueAsDate = new Date();
+      setupDateFilterPickers();
+      try {
+        await loadRecords();
+      } catch (error) {
+        alert(error.message);
+      }
+      renderTable();
+    }
+
+    initPage();
+  </script>

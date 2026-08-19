@@ -29,6 +29,7 @@ var pageRecordTypes = [
   'khieu-nai-den-bu',
   'chi-tieu-van-hanh',
   'chi-tieu-noi-bo',
+  'gia-von',
   'doanh-thu-gia-von',
   'doanh-thu',
   'lich-lam-tu-van'

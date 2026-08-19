@@ -81,6 +81,7 @@
       <option value="cost">Thanh toán giá vốn đối tác</option>
       <option value="marketing">Thanh toán chi phí Marketing</option>
       <option value="ads">Thanh toán chi phí Ads</option>
+      <option value="getspon">Phí Email Getspon</option>
       <option value="other">Chi phí khác</option>
     </select>
 
@@ -90,6 +91,9 @@
     </div>
     <div id="adsRouteNote" class="hidden" style="margin-top:12px;padding:10px;border-radius:10px;background:#f8fafc;color:#64748b;font-size:13px;">
       Chi phí Ads đang ghi nhận chung. Cuối tháng kế toán/marketing mới phân bổ theo chiều.
+    </div>
+    <div id="getsponRouteNote" class="hidden" style="margin-top:12px;padding:10px;border-radius:10px;background:#f8fafc;color:#64748b;font-size:13px;">
+      Phí Email Getspon dùng chung cho tất cả các chiều, không phân bổ theo chiều.
     </div>
 
     <div id="partnerBox">
@@ -221,6 +225,7 @@
           <option>Thanh toán giá vốn đối tác</option>
           <option>Thanh toán chi phí Marketing</option>
           <option>Thanh toán chi phí Ads</option>
+          <option>Phí Email Getspon</option>
           <option>Chi phí khác</option>
         </select>
 
@@ -248,6 +253,13 @@
           <option>Facebook</option>
           <option>TikTok</option>
           <option>Google</option>
+        </select>
+
+        <select id="filterAdsAccount" onchange="renderTable()">
+          <option value="">Tất cả tài khoản Ads</option>
+          <option>Tài khoản công ty</option>
+          <option>Tài khoản Aka</option>
+          <option>Tài khoản khác</option>
         </select>
 
         <select id="filterPayment" onchange="renderTable()">
@@ -363,6 +375,7 @@ function categoryText(value) {
     cost:"Thanh toán giá vốn đối tác",
     marketing:"Thanh toán chi phí Marketing",
     ads:"Thanh toán chi phí Ads",
+    getspon:"Phí Email Getspon",
     other:"Chi phí khác"
   };
   return map[value];
@@ -448,8 +461,9 @@ function renderForm() {
   document.getElementById("payerOtherBox").classList.toggle("hidden", payerType !== "Người khác");
 
   const c = document.getElementById("category").value;
-  document.getElementById("routeBox").classList.toggle("hidden", c === "ads");
+  document.getElementById("routeBox").classList.toggle("hidden", c === "ads" || c === "getspon");
   document.getElementById("adsRouteNote").classList.toggle("hidden", c !== "ads");
+  document.getElementById("getsponRouteNote").classList.toggle("hidden", c !== "getspon");
   document.getElementById("partnerBox").classList.toggle("hidden", c !== "cost");
   document.getElementById("marketingBox").classList.toggle("hidden", c !== "marketing");
   document.getElementById("adsBox").classList.toggle("hidden", c !== "ads");
@@ -481,6 +495,12 @@ function resolveMainAndReason(category) {
       reason: getValue("adsAccount", "adsAccountOther", "Tài khoản khác")
     };
   }
+  if (category === "getspon") {
+    return {
+      main: "Email Getspon",
+      reason: "Phí Email Getspon"
+    };
+  }
   return {
     main: document.getElementById("otherName").value || "Chi phí khác",
     reason: "Chi phí khác"
@@ -505,7 +525,7 @@ async function addRecord() {
       date: document.getElementById("date").value,
       payer,
       category,
-      route: categoryValue === "ads" ? "Chung / Chưa phân bổ" : document.getElementById("route").value,
+      route: (categoryValue === "ads" || categoryValue === "getspon") ? "Chung / Chưa phân bổ" : document.getElementById("route").value,
       main: detail.main,
       reason: detail.reason,
       payment: document.getElementById("paymentMethod").value,
@@ -534,6 +554,7 @@ function renderTable() {
   const fs = document.getElementById("filterStatus").value;
   const fpartner = document.getElementById("filterPartner").value;
   const fads = document.getElementById("filterAds").value;
+  const fadsAccount = document.getElementById("filterAdsAccount").value;
   const fpayment = document.getElementById("filterPayment").value;
 
   const filtered = records.filter(r =>
@@ -543,6 +564,7 @@ function renderTable() {
     (!fs || r.status === fs) &&
     (!fpartner || r.main === fpartner) &&
     (!fads || r.main === fads) &&
+    (!fadsAccount || r.reason === fadsAccount) &&
     (!fpayment || r.payment === fpayment) &&
     matchesDateFilter(r.date)
   );
