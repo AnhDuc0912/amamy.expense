@@ -191,11 +191,11 @@
         <option>Việt Séc</option>
         <option>Việt Đức</option>
         <option>Việt Châu Âu</option>
-        <option>Việt Đông Lạnh</option>
+        <option>Việt Châu Âu - Đông Lạnh</option>
         <option>Nhật Việt</option>
         <option>Đức Việt</option>
         <option>Mỹ Việt</option>
-        <option>Hàng đông lạnh</option>
+        <option>Úc Việt</option>
       </select>
 
       <label>Mục</label>
@@ -379,7 +379,7 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
   <script>
-    const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Hàng đông lạnh"];
+    const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Úc Việt"];
     const categoryLabels = {
       promo: "Hoàn ưu đãi",
       error: "Hoàn tiền do lỗi",
@@ -394,7 +394,11 @@
     const insuranceRoute = "Việt Nhật";
     const PAGE_RECORD_TYPE = "khieu-nai-den-bu";
     let records = [];
-    let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    function currentMonthKey() {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    }
+    let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
     let datePickers = {};
 
     const escapeHtml = value => String(value == null ? "" : value)
@@ -501,6 +505,7 @@
       if (typeof monthSelectPlugin === "function") {
         datePickers.month = flatpickr(document.getElementById("filterMonth"), {
           altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+          defaultDate: dateFilters.month,
           plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
           onChange: function(selectedDates, value) {
             dateFilters.month = value || "";

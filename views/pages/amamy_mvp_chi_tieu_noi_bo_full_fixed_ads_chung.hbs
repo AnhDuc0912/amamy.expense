@@ -295,18 +295,84 @@
     </div>
   </div>
 </div>
+
+<section class="card" style="margin-top:20px;">
+  <h2>2. Phân bổ chi phí Marketing theo chiều</h2>
+
+  <div class="summary" style="margin-bottom:18px;">
+    <div class="box"><span>Tổng thực chi</span><strong id="allocTotalSpend">0 đ</strong></div>
+    <div class="box"><span>Đã phân bổ theo chiều</span><strong id="allocAllocated">0 đ</strong></div>
+    <div class="box"><span>Chưa phân bổ</span><strong id="allocRemaining">0 đ</strong></div>
+  </div>
+
+  <div class="filters">
+    <div>
+      <label>Ngày</label>
+      <input id="allocDate" type="date" />
+    </div>
+    <div>
+      <label>Chiều</label>
+      <select id="allocRoute"></select>
+    </div>
+    <div>
+      <label>Facebook Ads</label>
+      <input id="allocFacebook" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this);" />
+    </div>
+    <div>
+      <label>TikTok Ads</label>
+      <input id="allocTiktok" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this);" />
+    </div>
+    <div>
+      <label>KOC/KOL</label>
+      <input id="allocKoc" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this);" />
+    </div>
+    <div>
+      <label>Marketing khác</label>
+      <input id="allocOther" type="text" inputmode="numeric" placeholder="0" oninput="formatMoneyInput(this);" />
+    </div>
+  </div>
+  <button type="button" style="width:auto" onclick="addAllocation()">Lưu phân bổ</button>
+
+  <div class="tableScroll" style="margin-top:16px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Ngày</th>
+          <th>Chiều</th>
+          <th>Facebook</th>
+          <th>TikTok</th>
+          <th>KOC/KOL</th>
+          <th>Khác</th>
+          <th>Tổng</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="allocTbody"></tbody>
+    </table>
+  </div>
+
+  <div class="preview" style="margin-top:14px;">
+    Lưu ý: Bảng phân bổ chỉ dùng để phân tích theo từng chiều, không được cộng thêm lần nữa vào P&amp;L.
+  </div>
+</section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
-const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Châu Âu","Việt Nhật","Việt Séc","Việt Pháp","Đức Việt","Nhật Việt","Mỹ Việt","Đông lạnh","Shopee"];
+const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Việt Nhật","Việt Séc","Việt Pháp","Đức Việt","Nhật Việt","Mỹ Việt","Úc Việt","Shopee"];
 const partners = ["Kinkin Logistic","VietExpress","Expolo","Bay Online","Huthui Cargo","AE Express"];
 
 const PAGE_RECORD_TYPE = "chi-tieu-noi-bo";
+const ALLOC_PAGE_RECORD_TYPE = "marketing-phan-bo-chieu";
 let records = [];
-let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+let allocations = [];
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
 let datePickers = {};
 
 const escapeHtml = value => String(value == null ? "" : value)
@@ -326,6 +392,92 @@ async function requestJson(url, options) {
 async function loadRecords() {
   const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
   records = payload.records || [];
+}
+
+async function loadAllocations() {
+  const payload = await requestJson(`/api/page-records/${ALLOC_PAGE_RECORD_TYPE}`);
+  allocations = payload.records || [];
+}
+
+async function addAllocation() {
+  const facebook = parseMoneyValue(document.getElementById("allocFacebook").value);
+  const tiktok = parseMoneyValue(document.getElementById("allocTiktok").value);
+  const koc = parseMoneyValue(document.getElementById("allocKoc").value);
+  const other = parseMoneyValue(document.getElementById("allocOther").value);
+
+  if (!facebook && !tiktok && !koc && !other) {
+    alert("Vui lòng nhập ít nhất một khoản phân bổ");
+    return;
+  }
+
+  try {
+    const payload = await requestJson(`/api/page-records/${ALLOC_PAGE_RECORD_TYPE}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ record: {
+        date: document.getElementById("allocDate").value,
+        route: document.getElementById("allocRoute").value,
+        facebook, tiktok, koc, other
+      }})
+    });
+    allocations.unshift(payload.record);
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  ["allocFacebook","allocTiktok","allocKoc","allocOther"].forEach(id => document.getElementById(id).value = "");
+  renderAllocations();
+}
+
+async function deleteAllocation(id) {
+  const actor = prompt("Nhập tên người xoá");
+  if (actor === null) return;
+  if (!actor.trim()) {
+    alert("Vui lòng nhập tên người xoá");
+    return;
+  }
+
+  const password = prompt("Nhập mật khẩu xoá phiếu");
+  if (password === null) return;
+
+  try {
+    await requestJson(`/api/page-records/${ALLOC_PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor, password })
+    });
+    allocations = allocations.filter(a => a.id !== id);
+    renderAllocations();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function renderAllocations() {
+  const filtered = allocations.filter(a => matchesDateFilter(a.date));
+
+  document.getElementById("allocTbody").innerHTML = filtered.map(a => {
+    const total = (Number(a.facebook)||0) + (Number(a.tiktok)||0) + (Number(a.koc)||0) + (Number(a.other)||0);
+    return `
+      <tr>
+        <td>${escapeHtml(a.date)}</td>
+        <td>${escapeHtml(a.route)}</td>
+        <td>${money(a.facebook)}</td>
+        <td>${money(a.tiktok)}</td>
+        <td>${money(a.koc)}</td>
+        <td>${money(a.other)}</td>
+        <td><strong>${money(total)}</strong></td>
+        <td><button class="deleteBtn" type="button" onclick="deleteAllocation('${escapeHtml(a.id)}')">Xoá</button></td>
+      </tr>`;
+  }).join("");
+
+  const allocatedTotal = filtered.reduce((s,a)=>s+(Number(a.facebook)||0)+(Number(a.tiktok)||0)+(Number(a.koc)||0)+(Number(a.other)||0), 0);
+  const realSpendTotal = records.filter(r => matchesDateFilter(r.date)).reduce((s,r)=>s+r.amount, 0);
+
+  document.getElementById("allocTotalSpend").textContent = money(realSpendTotal);
+  document.getElementById("allocAllocated").textContent = money(allocatedTotal);
+  document.getElementById("allocRemaining").textContent = money(realSpendTotal - allocatedTotal);
 }
 
 async function saveRecord(record) {
@@ -399,6 +551,7 @@ function setupDateFilterPickers() {
   if (typeof monthSelectPlugin === "function") {
     datePickers.month = flatpickr(document.getElementById("filterMonth"), {
       altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      defaultDate: dateFilters.month,
       plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
       onChange: function(selectedDates, value) {
         dateFilters.month = value || "";
@@ -437,9 +590,11 @@ function updatePreview() {
 async function init() {
   const routeSelect = document.getElementById("route");
   const filterRoute = document.getElementById("filterRoute");
+  const allocRoute = document.getElementById("allocRoute");
   routes.forEach(r => {
     routeSelect.appendChild(new Option(r, r));
     filterRoute.appendChild(new Option(r, r));
+    allocRoute.appendChild(new Option(r, r));
   });
   filterRoute.appendChild(new Option("Chung / Chưa phân bổ", "Chung / Chưa phân bổ"));
 
@@ -447,10 +602,11 @@ async function init() {
   partners.forEach(p => filterPartner.appendChild(new Option(p,p)));
 
   document.getElementById("date").valueAsDate = new Date();
+  document.getElementById("allocDate").valueAsDate = new Date();
   renderForm();
   setupDateFilterPickers();
   try {
-    await loadRecords();
+    await Promise.all([loadRecords(), loadAllocations()]);
   } catch (error) {
     alert(error.message);
   }
@@ -586,6 +742,7 @@ function renderTable() {
   `).join("");
 
   renderSummary(filtered);
+  renderAllocations();
 }
 function sumBy(data, category) {
   return data.filter(r => r.category === category).reduce((s,r)=>s+r.amount,0);

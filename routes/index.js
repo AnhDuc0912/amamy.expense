@@ -72,6 +72,13 @@ router.get('/gia-von', function(req, res) {
   });
 });
 
+router.get('/chi-phi-viettel-post', function(req, res) {
+  res.render('pages/amamy_mvp_chi_phi_viettel_post', {
+    title: 'Amamy - Chi phí Viettel Post',
+    navChiPhiViettelPost: true
+  });
+});
+
 router.get('/lich-lam-tu-van', function(req, res) {
   res.render('pages/mvp_xep_lich_tinh_luong', {
     title: 'Amamy - Lịch làm tư vấn',

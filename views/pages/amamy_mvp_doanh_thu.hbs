@@ -60,7 +60,7 @@
   <div class="page-head">
     <div>
       <h1>Doanh thu</h1>
-      <div class="sub">Chi tiết chi phí phát sinh theo từng chiều vận chuyển: Ads, vận chuyển và nhân viên phụ trách nhập tay; Marketing, Đền bù, Ưu đãi và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
+      <div class="sub">Chi tiết chi phí phát sinh theo từng chiều vận chuyển: vận chuyển và nhân viên phụ trách nhập tay; Giá vốn, Ads, Marketing, Đền bù, Ưu đãi và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
@@ -92,14 +92,6 @@
       <div>
         <label>Doanh thu</label>
         <input id="revenue" inputmode="numeric" placeholder="Ví dụ: 250.000.000">
-      </div>
-      <div>
-        <label>Giá vốn (Công nợ)</label>
-        <input id="cost" inputmode="numeric" placeholder="Ví dụ: 180.000.000">
-      </div>
-      <div>
-        <label>Ads</label>
-        <input id="ads" inputmode="numeric" placeholder="Ví dụ: 5.000.000">
       </div>
       <div>
         <label>Phí vận chuyển trong nước</label>
@@ -196,8 +188,6 @@
       <div><label>Số kiện</label><input id="ePackages" type="number" min="0"></div>
       <div><label>Số kg</label><input id="eKg" type="number" min="0" step="0.01"></div>
       <div><label>Doanh thu</label><input id="eRevenue"></div>
-      <div><label>Giá vốn (Công nợ)</label><input id="eCost"></div>
-      <div><label>Ads</label><input id="eAds"></div>
       <div><label>Phí vận chuyển trong nước</label><input id="eDomesticShipping"></div>
       <div><label>Vận chuyển nước ngoài</label><input id="eIntlShipping"></div>
       <div><label>Nhân viên phụ trách</label><input id="eStaffInCharge"></div>
@@ -216,14 +206,18 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
-const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Séc","Đức Việt","Hàng đông lạnh","Shopee"];
+const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Úc Việt","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Việt Séc","Đức Việt","Shopee"];
 const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
-const editableCostFields = ["ads","domesticShipping","intlShipping","otherCost"];
-const autoCostFields = ["marketing","compensation","discount","storeOpFee"];
+const editableCostFields = ["domesticShipping","intlShipping","otherCost"];
+const autoCostFields = ["ads","marketing","compensation","discount","storeOpFee"];
 const PAGE_RECORD_TYPE = "doanh-thu";
 let records = [];
 let editId = null;
-let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
 let routeFilter = "";
 let datePickers = {};
 let selectedIds = new Set();
@@ -231,6 +225,8 @@ let marketingMap = {};
 let compensationMap = {};
 let discountMap = {};
 let storeOpFeeMap = {};
+let giaVonMap = {};
+let adsMap = {};
 
 const escapeHtml = value => String(value == null ? "" : value)
   .replaceAll("&", "&amp;")
@@ -264,10 +260,12 @@ function autoValue(map, route, date) {
   return map[bucketKey(route, date)] || 0;
 }
 async function loadAutoCostMaps() {
-  const [khieuNaiPayload, marketingPayload, bootstrapPayload] = await Promise.all([
+  const [khieuNaiPayload, marketingPayload, bootstrapPayload, giaVonPayload, allocPayload] = await Promise.all([
     requestJson("/api/page-records/khieu-nai-den-bu"),
     requestJson("/api/page-records/chi-tieu-noi-bo"),
-    requestJson("/api/bootstrap")
+    requestJson("/api/bootstrap"),
+    requestJson("/api/page-records/gia-von"),
+    requestJson("/api/page-records/marketing-phan-bo-chieu")
   ]);
   const khieuNaiRecords = khieuNaiPayload.records || [];
   compensationMap = buildSumMap(khieuNaiRecords, r => r.route, r => r.date, r => r.loss, r => r.category !== "Hoàn ưu đãi");
@@ -278,6 +276,18 @@ async function loadAutoCostMaps() {
 
   const expenses = bootstrapPayload.expenses || [];
   storeOpFeeMap = buildSumMap(expenses, r => r.route, r => r.date, r => r.amount, null);
+
+  const giaVonRecords = giaVonPayload.records || [];
+  giaVonMap = buildSumMap(giaVonRecords, r => r.route, r => r.date, r => r.amount, null);
+
+  const allocRecords = allocPayload.records || [];
+  adsMap = buildSumMap(
+    allocRecords,
+    r => r.route,
+    r => r.date,
+    r => (Number(r.facebook)||0) + (Number(r.tiktok)||0) + (Number(r.koc)||0) + (Number(r.other)||0),
+    null
+  );
 }
 function attachAutoCosts(rows) {
   const seen = new Set();
@@ -287,6 +297,8 @@ function attachAutoCosts(rows) {
     seen.add(key);
     return {
       ...r,
+      cost: isFirst ? autoValue(giaVonMap, r.route, r.date) : 0,
+      ads: isFirst ? autoValue(adsMap, r.route, r.date) : 0,
       marketing: isFirst ? autoValue(marketingMap, r.route, r.date) : 0,
       compensation: isFirst ? autoValue(compensationMap, r.route, r.date) : 0,
       discount: isFirst ? autoValue(discountMap, r.route, r.date) : 0,
@@ -327,7 +339,6 @@ function normalizeRecord(record) {
     packages: Number(record.packages) || 0,
     kg: Number(record.kg) || 0,
     revenue: Number(record.revenue) || 0,
-    cost: Number(record.cost) || 0,
     staffInCharge: record.staffInCharge || "",
     createdAt: record.createdAt || ""
   };
@@ -358,6 +369,7 @@ function setupDateFilterPickers() {
   if (typeof monthSelectPlugin === "function") {
     datePickers.month = flatpickr(document.getElementById("filterMonth"), {
       altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      defaultDate: dateFilters.month,
       plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
       onChange: function(selectedDates, value) {
         dateFilters.month = value || "";
@@ -403,7 +415,7 @@ function setupRoutes(){
   document.getElementById("filterRoute").innerHTML =
     `<option value="">Tất cả chiều</option>` + routes.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
 }
-const moneyInputIds = ["revenue","cost","eRevenue","eCost",
+const moneyInputIds = ["revenue","eRevenue",
   ...editableCostFields,
   ...editableCostFields.map(f=>"e"+f[0].toUpperCase()+f.slice(1))];
 moneyInputIds.forEach(id=>{
@@ -497,14 +509,14 @@ function updateSelectionUI(filtered){
 async function addRecord(){
   const r={
     date:entryDate.value,route:route.value,packages:Number(packages.value)||0,
-    kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),cost:parseMoney(cost.value),staffInCharge:staffInCharge.value.trim()
+    kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),staffInCharge:staffInCharge.value.trim()
   };
   editableCostFields.forEach(f=>r[f]=parseMoney(document.getElementById(f).value));
-  const hasManualData = r.packages||r.kg||r.revenue||r.cost||editableCostFields.some(f=>r[f]);
+  const hasManualData = r.packages||r.kg||r.revenue||editableCostFields.some(f=>r[f]);
   if(!hasManualData){toast("Vui lòng nhập dữ liệu.");return}
   try {
     await createRecord(r);render();
-    ["packages","kg","revenue","cost","staffInCharge",...editableCostFields].forEach(id=>document.getElementById(id).value="");
+    ["packages","kg","revenue","staffInCharge",...editableCostFields].forEach(id=>document.getElementById(id).value="");
     toast("Đã thêm dữ liệu.");
   } catch (error) {
     toast(error.message);
@@ -513,7 +525,7 @@ async function addRecord(){
 function openEdit(id){
   editId=id; const r=records.find(x=>x.id===id); if(!r)return;
   eDate.value=r.date;eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;
-  eRevenue.value=fmt(r.revenue);eCost.value=fmt(r.cost);eStaffInCharge.value=r.staffInCharge;
+  eRevenue.value=fmt(r.revenue);eStaffInCharge.value=r.staffInCharge;
   editableCostFields.forEach(f=>{
     document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value=fmt(r[f]);
   });
@@ -523,7 +535,7 @@ function closeModal(){modal.classList.remove("show");editId=null}
 async function saveEdit(){
   const i=records.findIndex(x=>x.id===editId); if(i<0)return;
   const updated={date:eDate.value,route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
-    revenue:parseMoney(eRevenue.value),cost:parseMoney(eCost.value),staffInCharge:eStaffInCharge.value.trim()};
+    revenue:parseMoney(eRevenue.value),staffInCharge:eStaffInCharge.value.trim()};
   editableCostFields.forEach(f=>{
     updated[f]=parseMoney(document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value);
   });

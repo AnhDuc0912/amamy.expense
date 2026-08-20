@@ -34,7 +34,20 @@
   .mvp-page td.amount.negative{color:var(--red)}
   .mvp-page td.amount.positive{color:#2563eb}
   .mvp-page tr.netRow td{font-weight:900;background:#f8fbff}
-  @media(max-width:1200px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}}
+  .mvp-page .chartsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:18px}
+  .mvp-page .chartCard{display:flex;flex-direction:column}
+  .mvp-page .chartCard .chartUnit{font-weight:400;color:var(--muted);font-size:12px;float:right}
+  .mvp-page .chartCanvasWrap{position:relative;height:240px;margin-top:10px}
+  .mvp-page .insight{display:flex;gap:8px;align-items:flex-start;margin-top:14px;padding:12px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12.5px;line-height:1.5}
+  .mvp-page .insight .insightIcon{flex:0 0 auto}
+  .mvp-page .summaryTableWrap{overflow-x:auto}
+  .mvp-page .summaryTable{width:100%;border-collapse:collapse;min-width:900px}
+  .mvp-page .summaryTable th,.mvp-page .summaryTable td{padding:12px;border-bottom:1px solid #edf2f7;text-align:right;font-size:13px;white-space:nowrap}
+  .mvp-page .summaryTable th:first-child,.mvp-page .summaryTable td:first-child{text-align:left;font-weight:700}
+  .mvp-page .summaryTable th{background:#eef6ff;font-size:12px}
+  .mvp-page .summaryTable td.negative{color:var(--red)}
+  .mvp-page .summaryTable td.positive{color:var(--green)}
+  @media(max-width:1200px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}.mvp-page .chartsGrid{grid-template-columns:1fr}}
   @media(max-width:760px){.mvp-page .stats{grid-template-columns:repeat(2,1fr)}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
 </style>
 
@@ -90,14 +103,51 @@
       </table>
     </div>
   </section>
+
+  <div class="chartsGrid">
+    <section class="card chartCard">
+      <div class="card-title">1. DOANH THU – CHI PHÍ – LỢI NHUẬN THEO THÁNG <span class="chartUnit">(Đơn vị: Tỷ đồng)</span></div>
+      <div class="chartCanvasWrap"><canvas id="monthlyChart"></canvas></div>
+      <div class="insight"><span class="insightIcon">ℹ️</span><span id="monthlyInsight">Đang tải dữ liệu...</span></div>
+    </section>
+
+    <section class="card chartCard">
+      <div class="card-title">2. CƠ CẤU CHI PHÍ (KHÔNG BAO GỒM GIÁ VỐN) <span class="chartUnit" id="costPieTotal">0 đ</span></div>
+      <div class="chartCanvasWrap"><canvas id="costPieChart"></canvas></div>
+      <div class="insight"><span class="insightIcon">ℹ️</span><span id="costPieInsight">Đang tải dữ liệu...</span></div>
+    </section>
+
+    <section class="card chartCard">
+      <div class="card-title">3. BIÊN LỢI NHUẬN THEO THÁNG <span class="chartUnit">(%)</span></div>
+      <div class="chartCanvasWrap"><canvas id="marginChart"></canvas></div>
+      <div class="insight"><span class="insightIcon">ℹ️</span><span id="marginInsight">Đang tải dữ liệu...</span></div>
+    </section>
+  </div>
+
+  <section class="card" style="padding:0">
+    <div class="card-title" style="padding:20px 20px 0">TỔNG HỢP</div>
+    <div class="summaryTableWrap">
+      <table class="summaryTable">
+        <thead>
+          <tr id="summaryTableHead"></tr>
+        </thead>
+        <tbody id="summaryTableBody"></tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
-const marketingCategories = ["Thanh toán chi phí Marketing", "Thanh toán chi phí Ads"];
-let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+const nonMarketingCategories = ["Thanh toán giá vốn đối tác"];
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
 let datePickers = {};
 
 async function requestJson(url) {
@@ -129,6 +179,7 @@ function setupDateFilterPickers() {
   if (typeof monthSelectPlugin === "function") {
     datePickers.month = flatpickr(document.getElementById("filterMonth"), {
       altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      defaultDate: dateFilters.month,
       plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
       onChange: function(selectedDates, value) {
         dateFilters.month = value || "";
@@ -175,7 +226,7 @@ function sumRevenueCost(records) {
 
 function sumMarketing(records) {
   return records
-    .filter(r => matchesDateFilter(r.date) && marketingCategories.includes(r.category))
+    .filter(r => matchesDateFilter(r.date) && !nonMarketingCategories.includes(r.category))
     .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 }
 
@@ -195,6 +246,173 @@ function sumStoreExpenses(records) {
   return records
     .filter(r => matchesDateFilter(r.date))
     .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+}
+
+function monthKeyOf(date) { return String(date || "").slice(0, 7); }
+function monthLabel(monthKey) {
+  const parts = monthKey.split("-");
+  return "T" + Number(parts[1]) + "/" + parts[0];
+}
+
+function buildMonthlySeries() {
+  const months = new Set();
+  const collect = date => { const mk = monthKeyOf(date); if (/^\d{4}-\d{2}$/.test(mk)) months.add(mk); };
+  sourceData.doanhThu.forEach(r => collect(r.date));
+  sourceData.doanhThuGiaVon.filter(r => !r.pushed).forEach(r => collect(r.date));
+  sourceData.marketing.forEach(r => collect(r.date));
+  sourceData.khieuNai.forEach(r => collect(r.date));
+  sourceData.vanHanh.forEach(r => collect(r.date));
+  sourceData.expenses.forEach(r => collect(r.date));
+
+  return Array.from(months).sort().map(mk => {
+    const byMonth = r => monthKeyOf(r.date) === mk;
+    const revA = sourceData.doanhThu.filter(byMonth).reduce((a, r) => {
+      a.revenue += Number(r.revenue) || 0; a.cost += Number(r.cost) || 0; return a;
+    }, { revenue: 0, cost: 0 });
+    const revB = sourceData.doanhThuGiaVon.filter(r => !r.pushed).filter(byMonth).reduce((a, r) => {
+      a.revenue += Number(r.revenue) || 0; a.cost += Number(r.cost) || 0; return a;
+    }, { revenue: 0, cost: 0 });
+    const revenue = revA.revenue + revB.revenue;
+    const cost = revA.cost + revB.cost;
+    const storeFee = sourceData.expenses.filter(byMonth).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const marketingSpend = sourceData.marketing.filter(r => !nonMarketingCategories.includes(r.category)).filter(byMonth)
+      .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const complaintLoss = sourceData.khieuNai.filter(byMonth).reduce((s, r) => s + (Number(r.loss) || 0), 0);
+    const operatingSpend = sourceData.vanHanh.filter(byMonth).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalCost = cost + storeFee + marketingSpend + complaintLoss + operatingSpend;
+    const netProfit = revenue - totalCost;
+    return {
+      month: mk,
+      label: monthLabel(mk),
+      revenue, cost, totalCost, netProfit,
+      grossMarginPct: revenue ? (revenue - cost) / revenue * 100 : 0,
+      netMarginPct: revenue ? netProfit / revenue * 100 : 0
+    };
+  });
+}
+
+let monthlyChartInstance = null;
+let costPieChartInstance = null;
+let marginChartInstance = null;
+
+function renderMonthlyChart(series) {
+  const canvas = document.getElementById("monthlyChart");
+  if (!canvas || typeof Chart !== "function") return;
+  if (monthlyChartInstance) monthlyChartInstance.destroy();
+  monthlyChartInstance = new Chart(canvas, {
+    data: {
+      labels: series.map(s => s.label),
+      datasets: [
+        { type: "bar", label: "Doanh thu", data: series.map(s => +(s.revenue / 1e9).toFixed(2)), backgroundColor: "#2563eb", borderRadius: 5 },
+        { type: "bar", label: "Tổng chi phí", data: series.map(s => +(s.totalCost / 1e9).toFixed(2)), backgroundColor: "#f97316", borderRadius: 5 },
+        { type: "line", label: "Lợi nhuận ròng", data: series.map(s => +(s.netProfit / 1e9).toFixed(2)), borderColor: "#16a34a", backgroundColor: "#16a34a", tension: .3, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  const insight = document.getElementById("monthlyInsight");
+  if (series.length < 2) {
+    insight.textContent = "Chưa đủ dữ liệu nhiều tháng để nhận xét xu hướng.";
+  } else {
+    const first = series[0], last = series[series.length - 1];
+    const revenueTrend = last.revenue >= first.revenue ? "tăng" : "giảm";
+    const profitTrend = last.netProfit >= first.netProfit ? "tăng trưởng" : "giảm";
+    insight.textContent = `Doanh thu ${revenueTrend} từ ${money(first.revenue)} (${first.label}) lên ${money(last.revenue)} (${last.label}). Lợi nhuận ròng ${profitTrend} trong giai đoạn này.`;
+  }
+}
+
+function renderCostPieChart(current) {
+  const canvas = document.getElementById("costPieChart");
+  if (!canvas || typeof Chart !== "function") return;
+  const parts = [
+    { label: "Chi tiêu vận hành", value: current.operatingSpend, color: "#2563eb" },
+    { label: "Chi tiêu Marketing", value: current.marketingSpend, color: "#f97316" },
+    { label: "Phí hoạt động cửa hàng", value: current.storeFee, color: "#16a34a" },
+    { label: "Chi tiêu khiếu nại", value: current.complaintLoss, color: "#dc2626" }
+  ].filter(p => p.value > 0);
+  const total = parts.reduce((s, p) => s + p.value, 0);
+
+  if (costPieChartInstance) { costPieChartInstance.destroy(); costPieChartInstance = null; }
+  document.getElementById("costPieTotal").textContent = "Tổng: " + money(total);
+  const insight = document.getElementById("costPieInsight");
+  if (!total) {
+    insight.textContent = "Chưa có chi phí ngoài giá vốn trong kỳ này.";
+    return;
+  }
+  costPieChartInstance = new Chart(canvas, {
+    type: "doughnut",
+    data: { labels: parts.map(p => p.label), datasets: [{ data: parts.map(p => p.value), backgroundColor: parts.map(p => p.color) }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } } }
+  });
+  const biggest = parts.reduce((a, b) => (b.value > a.value ? b : a), parts[0]);
+  insight.textContent = `${biggest.label} chiếm tỷ trọng lớn nhất: ${(biggest.value / total * 100).toFixed(1)}%.`;
+}
+
+function renderMarginChart(series) {
+  const canvas = document.getElementById("marginChart");
+  if (!canvas || typeof Chart !== "function") return;
+  if (marginChartInstance) marginChartInstance.destroy();
+  const netSeries = series.map(s => +s.netMarginPct.toFixed(1));
+  marginChartInstance = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: series.map(s => s.label),
+      datasets: [
+        { label: "Biên lợi nhuận gộp (%)", data: series.map(s => +s.grossMarginPct.toFixed(1)), borderColor: "#2563eb", backgroundColor: "#2563eb", tension: .3, pointRadius: 4 },
+        { label: "Biên lợi nhuận ròng (%)", data: netSeries, borderColor: "#16a34a", backgroundColor: "#16a34a", tension: .3, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+
+  const insight = document.getElementById("marginInsight");
+  if (!netSeries.length) {
+    insight.textContent = "Chưa có dữ liệu để tính biên lợi nhuận.";
+  } else {
+    const avg = netSeries.reduce((a, b) => a + b, 0) / netSeries.length;
+    const last = netSeries[netSeries.length - 1];
+    const cmp = last >= avg ? "cao hơn" : "thấp hơn";
+    insight.textContent = `Biên lợi nhuận ròng trung bình ${avg.toFixed(1)}%. Tháng gần nhất ${cmp} mức trung bình.`;
+  }
+}
+
+function renderSummaryTable(current) {
+  const columns = [
+    ["Tổng doanh thu", current.totalRevenue, "positive"],
+    ["Tổng giá vốn", -current.totalCost, "negative"],
+    ["Phí hoạt động cửa hàng", -current.storeFee, "negative"],
+    ["Chi tiêu Marketing", -current.marketingSpend, "negative"],
+    ["Chi tiêu khiếu nại", -current.complaintLoss, "negative"],
+    ["Chi tiêu vận hành", -current.operatingSpend, "negative"],
+    ["Lãi ròng sau cùng", current.netProfit, current.netProfit >= 0 ? "positive" : "negative"],
+    ["Biên lợi nhuận ròng", current.totalRevenue ? current.netProfit / current.totalRevenue * 100 : 0, "margin"]
+  ];
+
+  document.getElementById("summaryTableHead").innerHTML =
+    "<th>Khoản mục</th>" + columns.map(([label]) => `<th>${label}</th>`).join("");
+
+  const amountRow = columns.map(([, value, cls], i) => {
+    if (i === columns.length - 1) return `<td class="${value >= 0 ? "positive" : "negative"}">${value.toFixed(1)}%</td>`;
+    return `<td class="${cls}">${value < 0 ? "-" : ""}${money(Math.abs(value))}</td>`;
+  }).join("");
+  const ratioRow = columns.map(([, value], i) => {
+    if (i === columns.length - 1) return `<td>—</td>`;
+    if (!current.totalRevenue) return `<td>—</td>`;
+    const pct = value / current.totalRevenue * 100;
+    return `<td class="${pct < 0 ? "negative" : "positive"}">${pct.toFixed(1)}%</td>`;
+  }).join("");
+
+  document.getElementById("summaryTableBody").innerHTML = `
+    <tr><td>Số tiền (đ)</td>${amountRow}</tr>
+    <tr><td>Tỷ lệ / Doanh thu</td>${ratioRow}</tr>`;
 }
 
 function render() {
@@ -238,6 +456,13 @@ function render() {
       <td>Lãi ròng sau cùng</td>
       <td class="amount">${money(netProfit)}</td>
     </tr>`;
+
+  const current = { totalRevenue, totalCost, storeFee, marketingSpend, complaintLoss, operatingSpend, netProfit };
+  const monthlySeries = buildMonthlySeries();
+  renderMonthlyChart(monthlySeries);
+  renderCostPieChart(current);
+  renderMarginChart(monthlySeries);
+  renderSummaryTable(current);
 }
 
 async function init() {

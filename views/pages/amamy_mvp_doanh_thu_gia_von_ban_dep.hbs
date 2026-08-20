@@ -133,13 +133,17 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
-const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Séc","Đức Việt","Hàng đông lạnh","Shopee"];
+const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Úc Việt","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Việt Séc","Đức Việt","Shopee"];
 const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
 const SOURCE_PAGE_RECORD_TYPE = "doanh-thu";
 const COST_PAGE_RECORD_TYPE = "doanh-thu-gia-von";
 let records = [];
 let costOverrides = [];
-let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
 let routeFilter = "";
 let datePickers = {};
 let editId = null;
@@ -206,6 +210,7 @@ function setupDateFilterPickers() {
   if (typeof monthSelectPlugin === "function") {
     datePickers.month = flatpickr(document.getElementById("filterMonth"), {
       altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      defaultDate: dateFilters.month,
       plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
       onChange: function(selectedDates, value) {
         dateFilters.month = value || "";

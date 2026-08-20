@@ -29,7 +29,9 @@ var pageRecordTypes = [
   'khieu-nai-den-bu',
   'chi-tieu-van-hanh',
   'chi-tieu-noi-bo',
+  'marketing-phan-bo-chieu',
   'gia-von',
+  'chi-phi-viettel-post',
   'doanh-thu-gia-von',
   'doanh-thu',
   'lich-lam-tu-van'

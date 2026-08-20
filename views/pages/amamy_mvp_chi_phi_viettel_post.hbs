@@ -102,7 +102,7 @@
 
     table {
       width: 100%;
-      min-width: 940px;
+      min-width: 860px;
       border-collapse: collapse;
       background: #f7f8fa;
       overflow: hidden;
@@ -157,13 +157,13 @@
   </style>
 <div class="mvp-page">
 <header>
-    <h1>Amamy - Giá vốn</h1>
-    <p>MVP nhập phiếu thanh toán giá vốn (COGS) cho đối tác logistic theo từng chiều vận chuyển</p>
+    <h1>Amamy - Chi phí Viettel Post</h1>
+    <p>MVP ghi nhận chi phí vận chuyển Viettel Post theo từng chiều</p>
   </header>
 
   <div class="wrap">
     <section class="card">
-      <h2>Tạo phiếu giá vốn</h2>
+      <h2>Tạo phiếu chi phí Viettel Post</h2>
 
       <label>Người chi</label>
       <select id="payer">
@@ -176,23 +176,8 @@
       <label>Chiều</label>
       <select id="route"></select>
 
-      <label>Đối tác</label>
-      <select id="partner" onchange="renderForm()">
-        <option>Kinkin Logistic</option>
-        <option>VietExpress</option>
-        <option>Expolo</option>
-        <option>Bay Online</option>
-        <option>Huthui Cargo</option>
-        <option>AE Express</option>
-        <option>Đối tác khác</option>
-      </select>
-      <div id="partnerOtherBox" class="hidden">
-        <label>Nhập tên đối tác</label>
-        <input id="partnerOther" placeholder="Tên đối tác khác" />
-      </div>
-
-      <label>Số tiền giá vốn</label>
-      <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 180.000.000" oninput="formatMoneyInput(this); updatePreview();" />
+      <label>Số tiền</label>
+      <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 18.000.000" oninput="formatMoneyInput(this); updatePreview();" />
 
       <label>Trạng thái</label>
       <select id="status">
@@ -213,7 +198,7 @@
 
     <div class="page-main">
       <div class="summary">
-        <div class="box"><span>Tổng giá vốn</span><strong id="sumTotal">0 đ</strong></div>
+        <div class="box"><span>Tổng chi phí</span><strong id="sumTotal">0 đ</strong></div>
         <div class="box"><span>Đã thanh toán</span><strong id="sumPaid">0 đ</strong></div>
         <div class="box"><span>Chưa thanh toán</span><strong id="sumUnpaid">0 đ</strong></div>
       </div>
@@ -240,9 +225,6 @@
           <select id="filterRoute" onchange="renderTable()">
             <option value="">Tất cả chiều</option>
           </select>
-          <select id="filterPartner" onchange="renderTable()">
-            <option value="">Tất cả đối tác</option>
-          </select>
           <select id="filterStatus" onchange="renderTable()">
             <option value="">Tất cả trạng thái</option>
             <option>Đã thanh toán</option>
@@ -264,7 +246,6 @@
               <th>Ngày</th>
               <th>Người chi</th>
               <th>Chiều</th>
-              <th>Đối tác</th>
               <th>Số tiền</th>
               <th>Trạng thái</th>
               <th>Ghi chú</th>
@@ -283,7 +264,7 @@
               <tr>
                 <th>Chiều</th>
                 <th>Số phiếu</th>
-                <th>Tổng giá vốn</th>
+                <th>Tổng chi phí</th>
                 <th>Đã thanh toán</th>
                 <th>Chưa thanh toán</th>
               </tr>
@@ -301,8 +282,7 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
   <script>
     const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Úc Việt"];
-    const partners = ["Kinkin Logistic","VietExpress","Expolo","Bay Online","Huthui Cargo","AE Express"];
-    const PAGE_RECORD_TYPE = "gia-von";
+    const PAGE_RECORD_TYPE = "chi-phi-viettel-post";
     let records = [];
     function currentMonthKey() {
       const d = new Date();
@@ -434,25 +414,12 @@
         routeSelect.appendChild(new Option(r, r));
         filterRoute.appendChild(new Option(r, r));
       });
-
-      const filterPartner = document.getElementById("filterPartner");
-      partners.forEach(p => filterPartner.appendChild(new Option(p, p)));
     }
 
     function switchMainTab(tab) {
       document.querySelectorAll(".summaryTabBtn[data-maintab]").forEach(btn => btn.classList.toggle("active", btn.dataset.maintab === tab));
       document.getElementById("mainTabDetail").classList.toggle("hidden", tab !== "detail");
       document.getElementById("mainTabStats").classList.toggle("hidden", tab !== "stats");
-    }
-
-    function renderForm() {
-      document.getElementById("partnerOtherBox").classList.toggle("hidden", document.getElementById("partner").value !== "Đối tác khác");
-    }
-
-    function getPartnerValue() {
-      const val = document.getElementById("partner").value;
-      if (val === "Đối tác khác") return document.getElementById("partnerOther").value || val;
-      return val;
     }
 
     function updatePreview() {
@@ -462,7 +429,7 @@
     async function addRecord() {
       const amount = parseMoneyValue(document.getElementById("amount").value);
       if (!amount) {
-        alert("Vui lòng nhập số tiền giá vốn");
+        alert("Vui lòng nhập số tiền chi phí");
         return;
       }
 
@@ -471,7 +438,6 @@
           date: document.getElementById("date").value,
           payer: document.getElementById("payer").value,
           route: document.getElementById("route").value,
-          partner: getPartnerValue(),
           amount,
           status: document.getElementById("status").value,
           note: document.getElementById("note").value
@@ -494,12 +460,10 @@
     function renderTable() {
       const tbody = document.getElementById("tbody");
       const fr = document.getElementById("filterRoute").value;
-      const fp = document.getElementById("filterPartner").value;
       const fs = document.getElementById("filterStatus").value;
 
       const filtered = records.filter(r =>
         (!fr || r.route === fr) &&
-        (!fp || r.partner === fp) &&
         (!fs || r.status === fs) &&
         matchesDateFilter(r.date)
       );
@@ -509,7 +473,6 @@
           <td>${escapeHtml(r.date)}</td>
           <td>${escapeHtml(r.payer)}</td>
           <td>${escapeHtml(r.route)}</td>
-          <td>${escapeHtml(r.partner)}</td>
           <td><strong>${money(r.amount)}</strong></td>
           <td><span class="badge ${badgeClass(r.status)}">${escapeHtml(r.status)}</span></td>
           <td>${escapeHtml(r.note || "")}</td>
@@ -551,7 +514,6 @@
 
     async function initPage() {
       initFilters();
-      renderForm();
       document.getElementById("date").valueAsDate = new Date();
       setupDateFilterPickers();
       try {

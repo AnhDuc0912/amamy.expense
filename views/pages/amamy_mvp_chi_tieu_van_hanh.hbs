@@ -273,7 +273,11 @@ const categories = [
 
 const PAGE_RECORD_TYPE = "chi-tieu-van-hanh";
 let records = [];
-let dateFilters = { month: "", dateFrom: "", dateTo: "" };
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
 let datePickers = {};
 
 const escapeHtml = value => String(value == null ? "" : value)
@@ -357,6 +361,7 @@ function setupDateFilterPickers() {
   if (typeof monthSelectPlugin === "function") {
     datePickers.month = flatpickr(document.getElementById("filterMonth"), {
       altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      defaultDate: dateFilters.month,
       plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
       onChange: function(selectedDates, value) {
         dateFilters.month = value || "";
