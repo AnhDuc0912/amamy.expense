@@ -1,0 +1,452 @@
+<style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f6f8; color:#1f2937; }
+    .mvp-page { max-width:100%; min-width:0; overflow:hidden; }
+    header { display:block; background:linear-gradient(180deg, var(--blue), var(--blue2)); color:white; padding:18px 28px; margin:0 0 18px; }
+    header h1 { margin:0; font-size:22px; color:white; overflow-wrap:anywhere; }
+    header p { margin:6px 0 0; color:#d1d5db; font-size:14px; }
+    .wrap { display:grid; grid-template-columns:minmax(320px, 410px) minmax(0, 1fr); gap:20px; padding:20px 0; max-width:100%; min-width:0; }
+    .card { min-width:0; background:white; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.08); padding:18px; }
+    h2 { font-size:18px; margin:0 0 16px; }
+    label { display:block; font-weight:700; font-size:13px; margin:14px 0 6px; }
+    input, select, textarea {
+      width:100%; padding:11px 12px; border:1px solid #d1d5db; border-radius:10px;
+      font-size:14px; background:white;
+    }
+    textarea { min-height:70px; resize:vertical; }
+    button {
+      border:none; padding:12px 16px; border-radius:10px; background:#2563eb;
+      color:white; font-weight:700; cursor:pointer; margin-top:16px; width:100%;
+    }
+    button:hover { background:#1d4ed8; }
+    .deleteBtn {
+      width:auto; margin:0; padding:7px 10px; background:#dc2626;
+      border-radius:8px; font-size:12px;
+    }
+    .deleteBtn:hover { background:#b91c1c; }
+    .hidden { display:none; }
+    .page-main { min-width:0; overflow:hidden; }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:20px; }
+    .box { padding:14px; border-radius:14px; background:white; box-shadow:0 4px 16px rgba(15,23,42,.08); }
+    .box span { display:block; color:#64748b; font-size:12px; margin-bottom:8px; }
+    .box strong { font-size:18px; }
+    .filters { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px; }
+    .tableScroll { max-width:100%; overflow-x:auto; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,.08); }
+    table { width:100%; min-width:1100px; border-collapse:collapse; background:#f7f8fa; overflow:hidden; }
+    th, td { padding:11px 9px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:13px; vertical-align:top; }
+    th { background:#f8fafc; color:#334155; }
+    .badge { padding:5px 9px; border-radius:999px; font-weight:700; font-size:12px; display:inline-block; }
+    .green { background:#dcfce7; color:#166534; }
+    .yellow { background:#fef3c7; color:#92400e; }
+    .blue { background:#dbeafe; color:#1e40af; }
+    .preview { margin-top:14px; padding:12px; border-radius:10px; background:#f8fafc; border:1px dashed #cbd5e1; font-size:14px; }
+    .preview strong { color:#2563eb; }
+    .topFilters button { width:auto; margin:0; }
+    .topFilters { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); }
+    .topFilterActions { min-width:0; }
+    @media (max-width:1200px) {
+      .wrap { grid-template-columns:minmax(0, 1fr); }
+      .summary { grid-template-columns:repeat(2,1fr); }
+      .filters { grid-template-columns:repeat(2,1fr); }
+    }
+  </style>
+<div class="mvp-page">
+<header>
+  <h1>Amamy - Nhân sự</h1>
+  <p>MVP ghi nhận chi phí nhân sự: lương nhân viên theo tháng, BHXH, và phí nhân viên phụ trách theo từng chiều</p>
+</header>
+
+<div class="wrap">
+  <section class="card">
+    <h2>Tạo phiếu chi phí nhân sự</h2>
+
+    <label>Người tạo phiếu</label>
+    <select id="creatorType" onchange="renderForm()">
+      <option>Long</option>
+      <option>Người khác</option>
+    </select>
+
+    <div id="creatorOtherBox" class="hidden">
+      <label>Nhập tên người tạo</label>
+      <input id="creatorOther" placeholder="Ví dụ: Liên, Duy..." />
+    </div>
+
+    <label>Ngày</label>
+    <input id="date" type="date" />
+
+    <label>Mục chi phí</label>
+    <select id="category" onchange="renderForm()">
+      <option value="salary">Phí tổng lương nhân viên</option>
+      <option value="bhxh">Phí BHXH</option>
+      <option value="staffFee">Phí nhân viên phụ trách theo chiều</option>
+    </select>
+
+    <div id="salaryBox" class="hidden">
+      <label>Kỳ lương</label>
+      <input id="salaryPeriod" placeholder="Ví dụ: Tháng 8/2026" />
+    </div>
+
+    <div id="routeBox" class="hidden">
+      <label>Chiều</label>
+      <select id="route"></select>
+      <label>Tên nhân viên phụ trách</label>
+      <input id="staffName" placeholder="Ví dụ: Ngọc Anh" />
+    </div>
+
+    <label>Thanh toán bằng</label>
+    <select id="paymentMethod">
+      <option>STK công ty</option>
+      <option>STK cá nhân Long</option>
+      <option>Chuyển khoản công ty</option>
+      <option>Tiền mặt</option>
+      <option>Khác</option>
+    </select>
+
+    <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label>Số tiền</label>
+        <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 11.000.000" oninput="formatMoneyInput(this); updatePreview();" />
+      </div>
+      <div>
+        <label>Trạng thái</label>
+        <select id="status">
+          <option>Đã thanh toán</option>
+          <option>Chưa thanh toán</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Ghi chú</label>
+    <textarea id="note" placeholder="Ghi chú: kỳ thanh toán, nội dung chi..."></textarea>
+
+    <div class="preview">
+      Số tiền ghi nhận: <strong id="amountPreview">0 đ</strong>
+    </div>
+
+    <button onclick="addRecord()">Lưu phiếu chi</button>
+  </section>
+
+  <div class="page-main">
+    <div class="summary">
+      <div class="box"><span>Tổng chi phí nhân sự</span><strong id="sumTotal">0 đ</strong></div>
+      <div class="box"><span>Lương nhân viên</span><strong id="sumSalary">0 đ</strong></div>
+      <div class="box"><span>BHXH</span><strong id="sumBhxh">0 đ</strong></div>
+      <div class="box"><span>Phụ trách theo chiều</span><strong id="sumStaffFee">0 đ</strong></div>
+    </div>
+
+    <section class="topFilters" aria-label="Bộ lọc thời gian" style="margin-bottom:14px;">
+      <label class="dateFilter monthFilter"><span>Tháng</span>
+        <input id="filterMonth" type="text" placeholder="Tất cả tháng" />
+      </label>
+      <label class="dateFilter"><span>Từ ngày</span>
+        <input id="filterDateFrom" type="text" placeholder="Chọn ngày" />
+      </label>
+      <label class="dateFilter"><span>Đến ngày</span>
+        <input id="filterDateTo" type="text" placeholder="Chọn ngày" />
+      </label>
+      <div class="filterActions topFilterActions">
+        <button id="applyDateFilter" type="button">Áp dụng</button>
+        <button id="clearDateFilter" type="button" class="filterClear">Xóa lọc</button>
+      </div>
+    </section>
+
+    <section class="card" style="margin-bottom:14px;">
+      <h2>Bộ lọc</h2>
+      <div class="filters">
+        <select id="filterCategory" onchange="renderTable()">
+          <option value="">Tất cả mục chi phí</option>
+          <option>Phí tổng lương nhân viên</option>
+          <option>Phí BHXH</option>
+          <option>Phí nhân viên phụ trách theo chiều</option>
+        </select>
+
+        <select id="filterRoute" onchange="renderTable()">
+          <option value="">Tất cả chiều</option>
+        </select>
+
+        <select id="filterStatus" onchange="renderTable()">
+          <option value="">Tất cả trạng thái</option>
+          <option>Đã thanh toán</option>
+          <option>Chưa thanh toán</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="tableScroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Ngày</th>
+          <th>Người tạo</th>
+          <th>Mục chi phí</th>
+          <th>Chiều</th>
+          <th>Chi tiết</th>
+          <th>Thanh toán bằng</th>
+          <th>Số tiền</th>
+          <th>Trạng thái</th>
+          <th>Ghi chú</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+<script>
+const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Đức","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Việt Nhật","Việt Séc","Việt Pháp","Đức Việt","Nhật Việt","Mỹ Việt","Úc Việt","Shopee"];
+
+const categoryText = {
+  salary: "Phí tổng lương nhân viên",
+  bhxh: "Phí BHXH",
+  staffFee: "Phí nhân viên phụ trách theo chiều"
+};
+
+const PAGE_RECORD_TYPE = "nhan-su";
+let records = [];
+function currentMonthKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+let dateFilters = { month: currentMonthKey(), dateFrom: "", dateTo: "" };
+let datePickers = {};
+
+const escapeHtml = value => String(value == null ? "" : value)
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&#039;");
+
+async function requestJson(url, options) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Không thể lưu dữ liệu");
+  return payload;
+}
+
+async function loadRecords() {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
+  records = payload.records || [];
+}
+
+async function saveRecord(record) {
+  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ record })
+  });
+  records.unshift(payload.record);
+}
+
+async function deleteRecord(id) {
+  const actor = prompt("Nhập tên người xoá");
+  if (actor === null) return;
+  if (!actor.trim()) {
+    alert("Vui lòng nhập tên người xoá");
+    return;
+  }
+
+  const password = prompt("Nhập mật khẩu xoá phiếu");
+  if (password === null) return;
+
+  try {
+    await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actor, password })
+    });
+    records = records.filter(record => record.id !== id);
+    renderTable();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+function parseMoneyValue(value) {
+  return Number(String(value || "").replace(/\D/g, "")) || 0;
+}
+function formatMoneyInput(input) {
+  const raw = input.value.replace(/\D/g, "");
+  if (!raw) { input.value = ""; return; }
+  input.value = Number(raw).toLocaleString("vi-VN");
+}
+function money(n) { return Number(n || 0).toLocaleString("vi-VN") + " đ"; }
+
+function matchesDateFilter(dateStr) {
+  const iso = dateStr && /^\d{4}-\d{2}-\d{2}/.test(dateStr) ? dateStr.slice(0, 10) : null;
+  if (!iso) return true;
+  const { month, dateFrom, dateTo } = dateFilters;
+  if (dateFrom || dateTo) {
+    return (!dateFrom || iso >= dateFrom) && (!dateTo || iso <= dateTo);
+  }
+  if (month) return iso.slice(0, 7) === month;
+  return true;
+}
+
+function setupDateFilterPickers() {
+  if (typeof flatpickr !== "function") return;
+  const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
+  const commonDateOptions = { altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d", allowInput: true, locale, disableMobile: true };
+
+  if (typeof monthSelectPlugin === "function") {
+    datePickers.month = flatpickr(document.getElementById("filterMonth"), {
+      altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
+      defaultDate: dateFilters.month,
+      plugins: [new monthSelectPlugin({ shorthand: false, dateFormat: "Y-m", altFormat: "F Y" })],
+      onChange: function(selectedDates, value) {
+        dateFilters.month = value || "";
+        renderTable();
+      }
+    });
+  }
+  datePickers.from = flatpickr(document.getElementById("filterDateFrom"), commonDateOptions);
+  datePickers.to = flatpickr(document.getElementById("filterDateTo"), commonDateOptions);
+
+  document.getElementById("applyDateFilter").onclick = function() {
+    dateFilters.dateFrom = document.getElementById("filterDateFrom").value;
+    dateFilters.dateTo = document.getElementById("filterDateTo").value;
+    renderTable();
+  };
+  document.getElementById("clearDateFilter").onclick = function() {
+    document.getElementById("filterMonth").value = "";
+    document.getElementById("filterDateFrom").value = "";
+    document.getElementById("filterDateTo").value = "";
+    if (datePickers.month) datePickers.month.clear();
+    if (datePickers.from) datePickers.from.clear();
+    if (datePickers.to) datePickers.to.clear();
+    dateFilters = { month: "", dateFrom: "", dateTo: "" };
+    renderTable();
+  };
+}
+
+function getDetail(categoryValue) {
+  if (categoryValue === "salary") {
+    return document.getElementById("salaryPeriod").value || "Lương nhân viên";
+  }
+  if (categoryValue === "staffFee") {
+    return document.getElementById("staffName").value || "Nhân viên phụ trách";
+  }
+  return "BHXH";
+}
+
+async function init() {
+  const routeSelect = document.getElementById("route");
+  const filterRoute = document.getElementById("filterRoute");
+  routes.forEach(r => {
+    routeSelect.appendChild(new Option(r, r));
+    filterRoute.appendChild(new Option(r, r));
+  });
+
+  document.getElementById("date").valueAsDate = new Date();
+  renderForm();
+  setupDateFilterPickers();
+  try {
+    await loadRecords();
+  } catch (error) {
+    alert(error.message);
+  }
+  renderTable();
+}
+
+function renderForm() {
+  const creatorType = document.getElementById("creatorType").value;
+  document.getElementById("creatorOtherBox").classList.toggle("hidden", creatorType !== "Người khác");
+
+  const category = document.getElementById("category").value;
+  document.getElementById("salaryBox").classList.toggle("hidden", category !== "salary");
+  document.getElementById("routeBox").classList.toggle("hidden", category !== "staffFee");
+  updatePreview();
+}
+
+function updatePreview() {
+  document.getElementById("amountPreview").textContent = money(parseMoneyValue(document.getElementById("amount").value));
+}
+
+async function addRecord() {
+  const categoryValue = document.getElementById("category").value;
+  const creator = document.getElementById("creatorType").value === "Người khác"
+    ? (document.getElementById("creatorOther").value || "Người khác")
+    : "Long";
+  const amount = parseMoneyValue(document.getElementById("amount").value);
+
+  if (!amount) {
+    alert("Vui lòng nhập số tiền");
+    return;
+  }
+
+  try {
+    await saveRecord({
+      date: document.getElementById("date").value,
+      creator,
+      category: categoryText[categoryValue],
+      route: categoryValue === "staffFee" ? document.getElementById("route").value : "Không áp dụng",
+      detail: getDetail(categoryValue),
+      payment: document.getElementById("paymentMethod").value,
+      amount,
+      status: document.getElementById("status").value,
+      note: document.getElementById("note").value
+    });
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  document.getElementById("amount").value = "";
+  document.getElementById("note").value = "";
+  updatePreview();
+  renderTable();
+}
+
+function badgeClass(status) {
+  return status === "Đã thanh toán" ? "green" : "yellow";
+}
+
+function renderTable() {
+  const fc = document.getElementById("filterCategory").value;
+  const fr = document.getElementById("filterRoute").value;
+  const fs = document.getElementById("filterStatus").value;
+
+  const filtered = records.filter(r =>
+    (!fc || r.category === fc) &&
+    (!fr || r.route === fr) &&
+    (!fs || r.status === fs) &&
+    matchesDateFilter(r.date)
+  );
+
+  document.getElementById("tbody").innerHTML = filtered.map(r => `
+    <tr>
+      <td>${escapeHtml(r.date)}</td>
+      <td>${escapeHtml(r.creator)}</td>
+      <td><span class="badge blue">${escapeHtml(r.category)}</span></td>
+      <td>${escapeHtml(r.route)}</td>
+      <td>${escapeHtml(r.detail)}</td>
+      <td>${escapeHtml(r.payment)}</td>
+      <td><strong>${money(r.amount)}</strong></td>
+      <td><span class="badge ${badgeClass(r.status)}">${escapeHtml(r.status)}</span></td>
+      <td>${escapeHtml(r.note || "")}</td>
+      <td><button class="deleteBtn" type="button" onclick="deleteRecord('${escapeHtml(r.id)}')">Xoá</button></td>
+    </tr>
+  `).join("");
+
+  renderSummary(filtered);
+}
+
+function sumBy(data, category) {
+  return data.filter(r => r.category === category).reduce((s,r)=>s+r.amount,0);
+}
+
+function renderSummary(data) {
+  document.getElementById("sumTotal").textContent = money(data.reduce((s,r)=>s+r.amount,0));
+  document.getElementById("sumSalary").textContent = money(sumBy(data, categoryText.salary));
+  document.getElementById("sumBhxh").textContent = money(sumBy(data, categoryText.bhxh));
+  document.getElementById("sumStaffFee").textContent = money(sumBy(data, categoryText.staffFee));
+}
+
+init();
+</script>

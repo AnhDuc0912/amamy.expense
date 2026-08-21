@@ -18,7 +18,7 @@
   .mvp-page label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
   .mvp-page input,.mvp-page select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
   .mvp-page input:focus,.mvp-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
-  .mvp-page .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:18px}
+  .mvp-page .stats{display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-bottom:18px}
   .mvp-page .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
   .mvp-page .stat span{display:block;color:var(--muted);font-size:12px;font-weight:700}
   .mvp-page .stat strong{display:block;font-size:18px;margin-top:8px}
@@ -34,19 +34,20 @@
   .mvp-page td.amount.negative{color:var(--red)}
   .mvp-page td.amount.positive{color:#2563eb}
   .mvp-page tr.netRow td{font-weight:900;background:#f8fbff}
-  .mvp-page .chartsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:18px}
-  .mvp-page .chartCard{display:flex;flex-direction:column}
+  .mvp-page .chartsGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:18px}
+  .mvp-page .chartsGrid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:18px}
+  .mvp-page .routeTableWrap{overflow-x:auto;margin-top:14px}
+  .mvp-page .routeTable{width:100%;border-collapse:collapse;min-width:640px}
+  .mvp-page .routeTable th,.mvp-page .routeTable td{padding:10px;border-bottom:1px solid #edf2f7;text-align:right;font-size:12.5px;white-space:nowrap}
+  .mvp-page .routeTable th:first-child,.mvp-page .routeTable td:first-child{text-align:left;font-weight:700;color:#2563eb}
+  .mvp-page .routeTable th{background:#eef6ff;font-size:11.5px}
+  .mvp-page .routeTable td.negative{color:var(--red)}
+  @media(max-width:1200px){.mvp-page .chartsGrid2{grid-template-columns:1fr}}
+  .mvp-page .chartCard{display:flex;flex-direction:column;min-width:0}
   .mvp-page .chartCard .chartUnit{font-weight:400;color:var(--muted);font-size:12px;float:right}
   .mvp-page .chartCanvasWrap{position:relative;height:240px;margin-top:10px}
   .mvp-page .insight{display:flex;gap:8px;align-items:flex-start;margin-top:14px;padding:12px;border-radius:10px;background:#eff6ff;color:#1e3a8a;font-size:12.5px;line-height:1.5}
   .mvp-page .insight .insightIcon{flex:0 0 auto}
-  .mvp-page .summaryTableWrap{overflow-x:auto}
-  .mvp-page .summaryTable{width:100%;border-collapse:collapse;min-width:900px}
-  .mvp-page .summaryTable th,.mvp-page .summaryTable td{padding:12px;border-bottom:1px solid #edf2f7;text-align:right;font-size:13px;white-space:nowrap}
-  .mvp-page .summaryTable th:first-child,.mvp-page .summaryTable td:first-child{text-align:left;font-weight:700}
-  .mvp-page .summaryTable th{background:#eef6ff;font-size:12px}
-  .mvp-page .summaryTable td.negative{color:var(--red)}
-  .mvp-page .summaryTable td.positive{color:var(--green)}
   @media(max-width:1200px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}.mvp-page .chartsGrid{grid-template-columns:1fr}}
   @media(max-width:760px){.mvp-page .stats{grid-template-columns:repeat(2,1fr)}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
 </style>
@@ -55,7 +56,7 @@
   <div class="page-head">
     <div>
       <h1>Báo cáo hoạt động kinh doanh</h1>
-      <div class="sub">Tự động tổng hợp từ Doanh thu, Giá vốn, Phí cửa hàng, Marketing, Khiếu nại và Vận hành.</div>
+      <div class="sub">Tự động tổng hợp từ Doanh thu, Giá vốn, Phí cửa hàng, Marketing, Khiếu nại, Vận hành và Nhân sự. Tổng giá vốn gồm cả Phí Viettel Post cho các chiều từ nước ngoài về Việt Nam.</div>
     </div>
     <div class="toolbar">
       <a class="btn-light" style="display:inline-flex;align-items:center;text-decoration:none" href="/doanh-thu/logout?redirect=/bao-cao-hoat-dong-kinh-doanh">Đăng xuất</a>
@@ -80,17 +81,18 @@
 
   <section class="stats">
     <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
-    <div class="stat"><span>TỔNG GIÁ VỐN</span><strong id="sCost">0 đ</strong></div>
+    <div class="stat"><span>TỔNG GIÁ VỐN</span><strong id="sCost">0 đ</strong><div id="sCostNote" style="font-size:11.5px;color:var(--muted);font-weight:400;margin-top:6px"></div></div>
     <div class="stat"><span>PHÍ HOẠT ĐỘNG CỬA HÀNG</span><strong id="sStore">0 đ</strong></div>
     <div class="stat"><span>CHI TIÊU MARKETING</span><strong id="sMarketing">0 đ</strong></div>
     <div class="stat"><span>CHI TIÊU KHIẾU NẠI</span><strong id="sComplaint">0 đ</strong></div>
     <div class="stat"><span>CHI TIÊU VẬN HÀNH</span><strong id="sOperating">0 đ</strong></div>
+    <div class="stat"><span>CHI TIÊU NHÂN SỰ</span><strong id="sHR">0 đ</strong></div>
   </section>
 
   <section class="card netProfitCard">
     <div class="card-title">LÃI RÒNG SAU CÙNG</div>
     <strong id="sNetProfit" class="netProfitValue">0 đ</strong>
-    <div class="sub">= Doanh thu − Giá vốn − Phí cửa hàng − Marketing − Khiếu nại − Vận hành</div>
+    <div class="sub">= Doanh thu − Giá vốn − Phí cửa hàng − Marketing − Khiếu nại − Vận hành − Nhân sự</div>
   </section>
 
   <section class="card" style="padding:0">
@@ -112,28 +114,33 @@
     </section>
 
     <section class="card chartCard">
-      <div class="card-title">2. CƠ CẤU CHI PHÍ (KHÔNG BAO GỒM GIÁ VỐN) <span class="chartUnit" id="costPieTotal">0 đ</span></div>
-      <div class="chartCanvasWrap"><canvas id="costPieChart"></canvas></div>
-      <div class="insight"><span class="insightIcon">ℹ️</span><span id="costPieInsight">Đang tải dữ liệu...</span></div>
-    </section>
-
-    <section class="card chartCard">
-      <div class="card-title">3. BIÊN LỢI NHUẬN THEO THÁNG <span class="chartUnit">(%)</span></div>
+      <div class="card-title">2. BIÊN LỢI NHUẬN THEO THÁNG <span class="chartUnit">(%)</span></div>
       <div class="chartCanvasWrap"><canvas id="marginChart"></canvas></div>
       <div class="insight"><span class="insightIcon">ℹ️</span><span id="marginInsight">Đang tải dữ liệu...</span></div>
     </section>
   </div>
 
-  <section class="card" style="padding:0">
-    <div class="card-title" style="padding:20px 20px 0">TỔNG HỢP</div>
-    <div class="summaryTableWrap">
-      <table class="summaryTable">
-        <thead>
-          <tr id="summaryTableHead"></tr>
-        </thead>
-        <tbody id="summaryTableBody"></tbody>
-      </table>
-    </div>
+  <div class="chartsGrid2">
+    <section class="card chartCard">
+      <div class="card-title">3. DOANH THU &amp; LỢI NHUẬN THEO TỪNG CHIỀU <span class="chartUnit">(Lũy kế 12 tháng, Tỷ đồng)</span></div>
+      <div class="chartCanvasWrap"><canvas id="routeChart"></canvas></div>
+      <div class="routeTableWrap">
+        <table class="routeTable">
+          <thead><tr id="routeTableHead"><th>Tuyến</th></tr></thead>
+          <tbody id="routeTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card chartCard">
+      <div class="card-title">4. BIÊN LỢI NHUẬN THEO THÁNG <span class="chartUnit">(%)</span></div>
+      <div class="chartCanvasWrap"><canvas id="netMarginChart"></canvas></div>
+    </section>
+  </div>
+
+  <section class="card chartCard">
+    <div class="card-title">5. CHI PHÍ THEO THÁNG (PHÂN LOẠI) <span class="chartUnit">(Đơn vị: Tỷ đồng)</span></div>
+    <div class="chartCanvasWrap" style="height:280px"><canvas id="costByCategoryChart"></canvas></div>
   </section>
 </div>
 
@@ -143,6 +150,7 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
 <script>
 const nonMarketingCategories = ["Thanh toán giá vốn đối tác"];
+function isInboundRoute(route) { return String(route || "").endsWith(" Việt"); }
 function currentMonthKey() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
@@ -209,19 +217,30 @@ function setupDateFilterPickers() {
 
 let sourceData = {
   doanhThu: [],
-  doanhThuGiaVon: [],
+  giaVon: [],
+  viettelPostAlloc: [],
+  adsAlloc: [],
   marketing: [],
   khieuNai: [],
   vanHanh: [],
-  expenses: []
+  expenses: [],
+  nhanSu: []
 };
 
-function sumRevenueCost(records) {
-  return records.filter(r => matchesDateFilter(r.date)).reduce((acc, r) => {
-    acc.revenue += Number(r.revenue) || 0;
-    acc.cost += Number(r.cost) || 0;
-    return acc;
-  }, { revenue: 0, cost: 0 });
+function sumRevenue(records) {
+  return records.filter(r => matchesDateFilter(r.date)).reduce((sum, r) => sum + (Number(r.revenue) || 0), 0);
+}
+
+function sumGiaVon(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date))
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+}
+
+function sumViettelPostCost(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date) && isInboundRoute(r.route))
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 }
 
 function sumMarketing(records) {
@@ -248,6 +267,12 @@ function sumStoreExpenses(records) {
     .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 }
 
+function sumHR(records) {
+  return records
+    .filter(r => matchesDateFilter(r.date))
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+}
+
 function monthKeyOf(date) { return String(date || "").slice(0, 7); }
 function monthLabel(monthKey) {
   const parts = monthKey.split("-");
@@ -258,42 +283,84 @@ function buildMonthlySeries() {
   const months = new Set();
   const collect = date => { const mk = monthKeyOf(date); if (/^\d{4}-\d{2}$/.test(mk)) months.add(mk); };
   sourceData.doanhThu.forEach(r => collect(r.date));
-  sourceData.doanhThuGiaVon.filter(r => !r.pushed).forEach(r => collect(r.date));
+  sourceData.giaVon.forEach(r => collect(r.date));
   sourceData.marketing.forEach(r => collect(r.date));
   sourceData.khieuNai.forEach(r => collect(r.date));
   sourceData.vanHanh.forEach(r => collect(r.date));
   sourceData.expenses.forEach(r => collect(r.date));
+  sourceData.nhanSu.forEach(r => collect(r.date));
 
   return Array.from(months).sort().map(mk => {
     const byMonth = r => monthKeyOf(r.date) === mk;
-    const revA = sourceData.doanhThu.filter(byMonth).reduce((a, r) => {
-      a.revenue += Number(r.revenue) || 0; a.cost += Number(r.cost) || 0; return a;
-    }, { revenue: 0, cost: 0 });
-    const revB = sourceData.doanhThuGiaVon.filter(r => !r.pushed).filter(byMonth).reduce((a, r) => {
-      a.revenue += Number(r.revenue) || 0; a.cost += Number(r.cost) || 0; return a;
-    }, { revenue: 0, cost: 0 });
-    const revenue = revA.revenue + revB.revenue;
-    const cost = revA.cost + revB.cost;
+    const revenue = sourceData.doanhThu.filter(byMonth).reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+    const giaVonCost = sourceData.giaVon.filter(byMonth).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const viettelPostCost = sourceData.viettelPostAlloc.filter(byMonth).filter(r => isInboundRoute(r.route)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const cost = giaVonCost + viettelPostCost;
     const storeFee = sourceData.expenses.filter(byMonth).reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const marketingSpend = sourceData.marketing.filter(r => !nonMarketingCategories.includes(r.category)).filter(byMonth)
       .reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const complaintLoss = sourceData.khieuNai.filter(byMonth).reduce((s, r) => s + (Number(r.loss) || 0), 0);
     const operatingSpend = sourceData.vanHanh.filter(byMonth).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const totalCost = cost + storeFee + marketingSpend + complaintLoss + operatingSpend;
+    const hrSpend = sourceData.nhanSu.filter(byMonth).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalCost = cost + storeFee + marketingSpend + complaintLoss + operatingSpend + hrSpend;
     const netProfit = revenue - totalCost;
     return {
       month: mk,
       label: monthLabel(mk),
       revenue, cost, totalCost, netProfit,
+      storeFee, marketingSpend, complaintLoss, operatingSpend, hrSpend,
       grossMarginPct: revenue ? (revenue - cost) / revenue * 100 : 0,
       netMarginPct: revenue ? netProfit / revenue * 100 : 0
     };
   });
 }
 
+function last12MonthKeys() {
+  const keys = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"));
+  }
+  return keys;
+}
+
+function buildRouteSeries() {
+  const windowMonths = new Set(last12MonthKeys());
+  const inWindow = r => windowMonths.has(monthKeyOf(r.date));
+  const byRoute = route => r => r.route === route;
+
+  const routeSet = new Set();
+  sourceData.doanhThu.filter(inWindow).forEach(r => routeSet.add(r.route));
+
+  return Array.from(routeSet).map(route => {
+    const revenue = sourceData.doanhThu.filter(inWindow).filter(byRoute(route)).reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+    const giaVonCost = sourceData.giaVon.filter(inWindow).filter(byRoute(route)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const viettelPostCost = isInboundRoute(route)
+      ? sourceData.viettelPostAlloc.filter(inWindow).filter(byRoute(route)).reduce((s, r) => s + (Number(r.amount) || 0), 0)
+      : 0;
+    const adsCost = sourceData.adsAlloc.filter(inWindow).filter(byRoute(route))
+      .reduce((s, r) => s + (Number(r.facebook) || 0) + (Number(r.tiktok) || 0) + (Number(r.koc) || 0) + (Number(r.other) || 0), 0);
+    const marketingCost = sourceData.marketing.filter(inWindow).filter(byRoute(route))
+      .filter(r => r.category === "Thanh toán chi phí Marketing").reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const compensationCost = sourceData.khieuNai.filter(inWindow).filter(byRoute(route))
+      .filter(r => r.category !== "Hoàn ưu đãi").reduce((s, r) => s + (Number(r.loss) || 0), 0);
+    const discountCost = sourceData.khieuNai.filter(inWindow).filter(byRoute(route))
+      .filter(r => r.category === "Hoàn ưu đãi").reduce((s, r) => s + (Number(r.loss) || 0), 0);
+    const storeFeeCost = sourceData.expenses.filter(inWindow).filter(byRoute(route)).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const staffFeeCost = sourceData.nhanSu.filter(inWindow).filter(byRoute(route))
+      .filter(r => r.category === "Phí nhân viên phụ trách theo chiều").reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalCost = giaVonCost + viettelPostCost + adsCost + marketingCost + compensationCost + discountCost + storeFeeCost + staffFeeCost;
+    const netProfit = revenue - totalCost;
+    return { route, revenue, netProfit, marginPct: revenue ? netProfit / revenue * 100 : 0 };
+  }).filter(r => r.revenue > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+}
+
 let monthlyChartInstance = null;
-let costPieChartInstance = null;
 let marginChartInstance = null;
+let routeChartInstance = null;
+let netMarginChartInstance = null;
+let costByCategoryChartInstance = null;
 
 function renderMonthlyChart(series) {
   const canvas = document.getElementById("monthlyChart");
@@ -324,33 +391,6 @@ function renderMonthlyChart(series) {
     const profitTrend = last.netProfit >= first.netProfit ? "tăng trưởng" : "giảm";
     insight.textContent = `Doanh thu ${revenueTrend} từ ${money(first.revenue)} (${first.label}) lên ${money(last.revenue)} (${last.label}). Lợi nhuận ròng ${profitTrend} trong giai đoạn này.`;
   }
-}
-
-function renderCostPieChart(current) {
-  const canvas = document.getElementById("costPieChart");
-  if (!canvas || typeof Chart !== "function") return;
-  const parts = [
-    { label: "Chi tiêu vận hành", value: current.operatingSpend, color: "#2563eb" },
-    { label: "Chi tiêu Marketing", value: current.marketingSpend, color: "#f97316" },
-    { label: "Phí hoạt động cửa hàng", value: current.storeFee, color: "#16a34a" },
-    { label: "Chi tiêu khiếu nại", value: current.complaintLoss, color: "#dc2626" }
-  ].filter(p => p.value > 0);
-  const total = parts.reduce((s, p) => s + p.value, 0);
-
-  if (costPieChartInstance) { costPieChartInstance.destroy(); costPieChartInstance = null; }
-  document.getElementById("costPieTotal").textContent = "Tổng: " + money(total);
-  const insight = document.getElementById("costPieInsight");
-  if (!total) {
-    insight.textContent = "Chưa có chi phí ngoài giá vốn trong kỳ này.";
-    return;
-  }
-  costPieChartInstance = new Chart(canvas, {
-    type: "doughnut",
-    data: { labels: parts.map(p => p.label), datasets: [{ data: parts.map(p => p.value), backgroundColor: parts.map(p => p.color) }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } } }
-  });
-  const biggest = parts.reduce((a, b) => (b.value > a.value ? b : a), parts[0]);
-  insight.textContent = `${biggest.label} chiếm tỷ trọng lớn nhất: ${(biggest.value / total * 100).toFixed(1)}%.`;
 }
 
 function renderMarginChart(series) {
@@ -384,54 +424,110 @@ function renderMarginChart(series) {
   }
 }
 
-function renderSummaryTable(current) {
-  const columns = [
-    ["Tổng doanh thu", current.totalRevenue, "positive"],
-    ["Tổng giá vốn", -current.totalCost, "negative"],
-    ["Phí hoạt động cửa hàng", -current.storeFee, "negative"],
-    ["Chi tiêu Marketing", -current.marketingSpend, "negative"],
-    ["Chi tiêu khiếu nại", -current.complaintLoss, "negative"],
-    ["Chi tiêu vận hành", -current.operatingSpend, "negative"],
-    ["Lãi ròng sau cùng", current.netProfit, current.netProfit >= 0 ? "positive" : "negative"],
-    ["Biên lợi nhuận ròng", current.totalRevenue ? current.netProfit / current.totalRevenue * 100 : 0, "margin"]
-  ];
+function renderRouteChart(rows) {
+  const canvas = document.getElementById("routeChart");
+  if (!canvas || typeof Chart !== "function") return;
+  if (routeChartInstance) routeChartInstance.destroy();
+  routeChartInstance = new Chart(canvas, {
+    data: {
+      labels: rows.map(r => r.route),
+      datasets: [
+        { type: "bar", label: "Doanh thu", data: rows.map(r => +(r.revenue / 1e9).toFixed(2)), backgroundColor: "#2563eb", borderRadius: 5 },
+        { type: "line", label: "Lợi nhuận ròng", data: rows.map(r => +(r.netProfit / 1e9).toFixed(2)), borderColor: "#16a34a", backgroundColor: "#16a34a", tension: .3, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
 
-  document.getElementById("summaryTableHead").innerHTML =
-    "<th>Khoản mục</th>" + columns.map(([label]) => `<th>${label}</th>`).join("");
+  document.getElementById("routeTableHead").innerHTML =
+    "<th>Tuyến</th>" + rows.map(r => `<th>${escapeHtmlSafe(r.route)}</th>`).join("");
+  const revenueRow = rows.map(r => `<td>${money(r.revenue)}</td>`).join("");
+  const profitRow = rows.map(r => `<td class="${r.netProfit < 0 ? "negative" : ""}">${money(r.netProfit)}</td>`).join("");
+  const marginRow = rows.map(r => `<td class="${r.marginPct < 0 ? "negative" : ""}">${r.marginPct.toFixed(1)}%</td>`).join("");
+  document.getElementById("routeTableBody").innerHTML = `
+    <tr><td>Doanh thu</td>${revenueRow}</tr>
+    <tr><td>Lợi nhuận ròng</td>${profitRow}</tr>
+    <tr><td>Biên LN (%)</td>${marginRow}</tr>`;
+}
 
-  const amountRow = columns.map(([, value, cls], i) => {
-    if (i === columns.length - 1) return `<td class="${value >= 0 ? "positive" : "negative"}">${value.toFixed(1)}%</td>`;
-    return `<td class="${cls}">${value < 0 ? "-" : ""}${money(Math.abs(value))}</td>`;
-  }).join("");
-  const ratioRow = columns.map(([, value], i) => {
-    if (i === columns.length - 1) return `<td>—</td>`;
-    if (!current.totalRevenue) return `<td>—</td>`;
-    const pct = value / current.totalRevenue * 100;
-    return `<td class="${pct < 0 ? "negative" : "positive"}">${pct.toFixed(1)}%</td>`;
-  }).join("");
+function escapeHtmlSafe(value) {
+  return String(value == null ? "" : value)
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
 
-  document.getElementById("summaryTableBody").innerHTML = `
-    <tr><td>Số tiền (đ)</td>${amountRow}</tr>
-    <tr><td>Tỷ lệ / Doanh thu</td>${ratioRow}</tr>`;
+function renderNetMarginChart(series) {
+  const canvas = document.getElementById("netMarginChart");
+  if (!canvas || typeof Chart !== "function") return;
+  if (netMarginChartInstance) netMarginChartInstance.destroy();
+  const values = series.map(s => +s.netMarginPct.toFixed(1));
+  netMarginChartInstance = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: series.map(s => s.label),
+      datasets: [{
+        label: "Biên lợi nhuận ròng (%)",
+        data: values,
+        borderColor: "#16a34a",
+        backgroundColor: "#16a34a",
+        segment: { borderColor: ctx => (ctx.p0.parsed.y < 0 || ctx.p1.parsed.y < 0) ? "#dc2626" : "#16a34a" },
+        pointBackgroundColor: values.map(v => v < 0 ? "#dc2626" : "#16a34a"),
+        tension: .3, pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderCostByCategoryChart(series) {
+  const canvas = document.getElementById("costByCategoryChart");
+  if (!canvas || typeof Chart !== "function") return;
+  if (costByCategoryChartInstance) costByCategoryChartInstance.destroy();
+  costByCategoryChartInstance = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: series.map(s => s.label),
+      datasets: [
+        { label: "Giá vốn", data: series.map(s => +(s.cost / 1e9).toFixed(2)), backgroundColor: "#2563eb", stack: "cost" },
+        { label: "Nhân sự", data: series.map(s => +(s.hrSpend / 1e9).toFixed(2)), backgroundColor: "#f97316", stack: "cost" },
+        { label: "Marketing", data: series.map(s => +(s.marketingSpend / 1e9).toFixed(2)), backgroundColor: "#16a34a", stack: "cost" },
+        { label: "Vận hành khác", data: series.map(s => +((s.storeFee + s.operatingSpend + s.complaintLoss) / 1e9).toFixed(2)), backgroundColor: "#8b5cf6", stack: "cost" }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+    }
+  });
 }
 
 function render() {
-  const revenueA = sumRevenueCost(sourceData.doanhThu);
-  const revenueB = sumRevenueCost(sourceData.doanhThuGiaVon.filter(r => !r.pushed));
-  const totalRevenue = revenueA.revenue + revenueB.revenue;
-  const totalCost = revenueA.cost + revenueB.cost;
+  const totalRevenue = sumRevenue(sourceData.doanhThu);
+  const giaVonCost = sumGiaVon(sourceData.giaVon);
+  const viettelPostCost = sumViettelPostCost(sourceData.viettelPostAlloc);
+  const totalCost = giaVonCost + viettelPostCost;
   const storeFee = sumStoreExpenses(sourceData.expenses);
   const marketingSpend = sumMarketing(sourceData.marketing);
   const complaintLoss = sumComplaintLoss(sourceData.khieuNai);
   const operatingSpend = sumOperating(sourceData.vanHanh);
-  const netProfit = totalRevenue - totalCost - storeFee - marketingSpend - complaintLoss - operatingSpend;
+  const hrSpend = sumHR(sourceData.nhanSu);
+  const netProfit = totalRevenue - totalCost - storeFee - marketingSpend - complaintLoss - operatingSpend - hrSpend;
 
   document.getElementById("sRevenue").textContent = money(totalRevenue);
   document.getElementById("sCost").textContent = money(totalCost);
+  document.getElementById("sCostNote").textContent = `(Giá vốn: ${money(giaVonCost)} và Phí Viettel Post: ${money(viettelPostCost)})`;
   document.getElementById("sStore").textContent = money(storeFee);
   document.getElementById("sMarketing").textContent = money(marketingSpend);
   document.getElementById("sComplaint").textContent = money(complaintLoss);
   document.getElementById("sOperating").textContent = money(operatingSpend);
+  document.getElementById("sHR").textContent = money(hrSpend);
 
   const netProfitEl = document.getElementById("sNetProfit");
   netProfitEl.textContent = money(netProfit);
@@ -440,16 +536,17 @@ function render() {
 
   const rows = [
     ["Tổng doanh thu", totalRevenue, "positive"],
-    ["Tổng giá vốn", -totalCost, "negative"],
+    ["Tổng giá vốn", -totalCost, "negative", `Giá vốn: ${money(giaVonCost)} và Phí Viettel Post: ${money(viettelPostCost)}`],
     ["Phí hoạt động cửa hàng", -storeFee, "negative"],
     ["Chi tiêu Marketing", -marketingSpend, "negative"],
     ["Chi tiêu khiếu nại", -complaintLoss, "negative"],
-    ["Chi tiêu vận hành", -operatingSpend, "negative"]
+    ["Chi tiêu vận hành", -operatingSpend, "negative"],
+    ["Chi tiêu nhân sự", -hrSpend, "negative"]
   ];
   document.getElementById("breakdownBody").innerHTML =
-    rows.map(([label, value, cls]) => `
+    rows.map(([label, value, cls, note]) => `
       <tr>
-        <td>${label}</td>
+        <td>${label}${note ? `<div style="font-size:11.5px;color:var(--muted);font-weight:400;margin-top:3px">${note}</div>` : ""}</td>
         <td class="amount ${cls}">${value < 0 ? "-" : ""}${money(Math.abs(value))}</td>
       </tr>`).join("") +
     `<tr class="netRow">
@@ -457,31 +554,37 @@ function render() {
       <td class="amount">${money(netProfit)}</td>
     </tr>`;
 
-  const current = { totalRevenue, totalCost, storeFee, marketingSpend, complaintLoss, operatingSpend, netProfit };
   const monthlySeries = buildMonthlySeries();
   renderMonthlyChart(monthlySeries);
-  renderCostPieChart(current);
   renderMarginChart(monthlySeries);
-  renderSummaryTable(current);
+  renderRouteChart(buildRouteSeries());
+  renderNetMarginChart(monthlySeries);
+  renderCostByCategoryChart(monthlySeries);
 }
 
 async function init() {
   setupDateFilterPickers();
   try {
-    const [doanhThu, doanhThuGiaVon, marketing, khieuNai, vanHanh, bootstrap] = await Promise.all([
+    const [doanhThu, giaVon, viettelPostAlloc, adsAlloc, marketing, khieuNai, vanHanh, bootstrap, nhanSu] = await Promise.all([
       requestJson("/api/page-records/doanh-thu"),
-      requestJson("/api/page-records/doanh-thu-gia-von"),
+      requestJson("/api/page-records/gia-von"),
+      requestJson("/api/page-records/chi-phi-viettel-post-phan-bo-chieu"),
+      requestJson("/api/page-records/marketing-phan-bo-chieu"),
       requestJson("/api/page-records/chi-tieu-noi-bo"),
       requestJson("/api/page-records/khieu-nai-den-bu"),
       requestJson("/api/page-records/chi-tieu-van-hanh"),
-      requestJson("/api/bootstrap")
+      requestJson("/api/bootstrap"),
+      requestJson("/api/page-records/nhan-su")
     ]);
     sourceData.doanhThu = doanhThu.records || [];
-    sourceData.doanhThuGiaVon = doanhThuGiaVon.records || [];
+    sourceData.giaVon = giaVon.records || [];
+    sourceData.viettelPostAlloc = viettelPostAlloc.records || [];
+    sourceData.adsAlloc = adsAlloc.records || [];
     sourceData.marketing = marketing.records || [];
     sourceData.khieuNai = khieuNai.records || [];
     sourceData.vanHanh = vanHanh.records || [];
     sourceData.expenses = bootstrap.expenses || [];
+    sourceData.nhanSu = nhanSu.records || [];
   } catch (error) {
     alert(error.message);
   }

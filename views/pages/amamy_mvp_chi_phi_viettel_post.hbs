@@ -102,7 +102,7 @@
 
     table {
       width: 100%;
-      min-width: 860px;
+      min-width: 720px;
       border-collapse: collapse;
       background: #f7f8fa;
       overflow: hidden;
@@ -139,17 +139,17 @@
     .topFilters button { width: auto; margin: 0; }
     .topFilters { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
     .topFilterActions { min-width: 0; }
-    .summaryTabs { display: flex; gap: 8px; margin-bottom: 14px; }
-    .summaryTabBtn {
-      width: auto;
-      margin: 0;
-      padding: 9px 16px;
-      background: #f1f5f9;
-      color: #334155;
-      font-weight: 600;
+    .note {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-size: 13px;
+      line-height: 1.5;
     }
-    .summaryTabBtn:hover { background: #e2e8f0; }
-    .summaryTabBtn.active { background: #2563eb; color: white; }
+    .sectionGap { margin-top: 24px; }
     @media (max-width: 1000px) {
       .wrap { grid-template-columns: minmax(0, 1fr); }
       .summary { grid-template-columns: 1fr 1fr; }
@@ -158,12 +158,12 @@
 <div class="mvp-page">
 <header>
     <h1>Amamy - Chi phí Viettel Post</h1>
-    <p>MVP ghi nhận chi phí vận chuyển Viettel Post theo từng chiều</p>
+    <p>Ghi nhận tổng tiền thực trả Viettel Post theo bill, và phân bổ chi phí theo từng chiều để phân tích riêng</p>
   </header>
 
   <div class="wrap">
     <section class="card">
-      <h2>Tạo phiếu chi phí Viettel Post</h2>
+      <h2>1. Thanh toán Viettel Post</h2>
 
       <label>Người chi</label>
       <select id="payer">
@@ -173,11 +173,8 @@
       <label>Ngày</label>
       <input id="date" type="date" />
 
-      <label>Chiều</label>
-      <select id="route"></select>
-
-      <label>Số tiền</label>
-      <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 18.000.000" oninput="formatMoneyInput(this); updatePreview();" />
+      <label>Số tiền (theo bill thực tế)</label>
+      <input id="amount" type="text" inputmode="numeric" placeholder="Ví dụ: 30.000.000" oninput="formatMoneyInput(this); updatePreview();" />
 
       <label>Trạng thái</label>
       <select id="status">
@@ -186,7 +183,7 @@
       </select>
 
       <label>Ghi chú</label>
-      <textarea id="note" placeholder="Ghi chú: kỳ thanh toán, mã đơn, nội dung..."></textarea>
+      <textarea id="note" placeholder="Ghi chú: kỳ thanh toán, mã bill, nội dung..."></textarea>
 
       <div class="box" style="margin-top:14px;box-shadow:none;border:1px dashed #cbd5e1;padding:12px;">
         <span>Số tiền ghi nhận</span>
@@ -222,9 +219,6 @@
       <section class="card" style="margin-bottom:14px;">
         <h2>Lọc dữ liệu</h2>
         <div class="filters">
-          <select id="filterRoute" onchange="renderTable()">
-            <option value="">Tất cả chiều</option>
-          </select>
           <select id="filterStatus" onchange="renderTable()">
             <option value="">Tất cả trạng thái</option>
             <option>Đã thanh toán</option>
@@ -233,19 +227,12 @@
         </div>
       </section>
 
-      <div class="summaryTabs">
-        <button type="button" class="summaryTabBtn active" data-maintab="detail" onclick="switchMainTab('detail')">Bảng chi tiết</button>
-        <button type="button" class="summaryTabBtn" data-maintab="stats" onclick="switchMainTab('stats')">Bảng tổng hợp theo Chiều</button>
-      </div>
-
-      <div id="mainTabDetail" class="summaryTabPanel">
-        <div class="tableScroll">
+      <div class="tableScroll">
         <table>
           <thead>
             <tr>
               <th>Ngày</th>
               <th>Người chi</th>
-              <th>Chiều</th>
               <th>Số tiền</th>
               <th>Trạng thái</th>
               <th>Ghi chú</th>
@@ -254,25 +241,51 @@
           </thead>
           <tbody id="tbody"></tbody>
         </table>
-        </div>
       </div>
+    </div>
+  </div>
 
-      <div id="mainTabStats" class="summaryTabPanel hidden">
-        <div class="tableScroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Chiều</th>
-                <th>Số phiếu</th>
-                <th>Tổng chi phí</th>
-                <th>Đã thanh toán</th>
-                <th>Chưa thanh toán</th>
-              </tr>
-            </thead>
-            <tbody id="summaryByRouteBody"></tbody>
-          </table>
-        </div>
+  <div class="card sectionGap">
+    <h2>2. Phân bổ chi phí Viettel Post theo chiều</h2>
+
+    <div class="summary">
+      <div class="box"><span>Tổng thực chi Viettel Post</span><strong id="allocTotalSpend">0 đ</strong></div>
+      <div class="box"><span>Đã phân bổ theo chiều</span><strong id="allocAllocated">0 đ</strong></div>
+      <div class="box"><span>Chưa phân bổ</span><strong id="allocRemaining">0 đ</strong></div>
+    </div>
+
+    <div class="filters">
+      <div>
+        <label>Ngày</label>
+        <input id="allocDate" type="date" />
       </div>
+      <div>
+        <label>Chiều</label>
+        <select id="allocRoute"></select>
+      </div>
+      <div>
+        <label>Số tiền phân bổ</label>
+        <input id="allocAmount" type="text" inputmode="numeric" placeholder="Ví dụ: 14.000.000" oninput="formatMoneyInput(this);" />
+      </div>
+    </div>
+    <button type="button" style="width:auto" onclick="addAllocation()">Lưu phân bổ</button>
+
+    <div class="tableScroll" style="margin-top:16px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Ngày</th>
+            <th>Chiều</th>
+            <th>Số tiền</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="allocTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      Lưu ý: Tổng phân bổ có thể khác tổng thực trả vì có thể khác kỳ/đơn đối soát. Mục đích là để cuối tháng biết mỗi chiều đã tốn bao nhiêu phí Viettel Post, phục vụ tính lãi gộp từng chiều. Bảng này chỉ dùng để phân tích, không cộng thêm lần nữa vào chi phí thực trả ở trên.
     </div>
   </div>
 </div>
@@ -283,7 +296,9 @@
   <script>
     const routes = ["Việt Mỹ","Việt Úc","Việt Canada","Việt Pháp","Việt Nhật","Việt Séc","Việt Đức","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Nhật Việt","Đức Việt","Mỹ Việt","Úc Việt"];
     const PAGE_RECORD_TYPE = "chi-phi-viettel-post";
+    const ALLOC_PAGE_RECORD_TYPE = "chi-phi-viettel-post-phan-bo-chieu";
     let records = [];
+    let allocations = [];
     function currentMonthKey() {
       const d = new Date();
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
@@ -338,6 +353,62 @@
         });
         records = records.filter(record => record.id !== id);
         renderTable();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function loadAllocations() {
+      const payload = await requestJson(`/api/page-records/${ALLOC_PAGE_RECORD_TYPE}`);
+      allocations = payload.records || [];
+    }
+
+    async function addAllocation() {
+      const amount = parseMoneyValue(document.getElementById("allocAmount").value);
+      if (!amount) {
+        alert("Vui lòng nhập số tiền phân bổ");
+        return;
+      }
+
+      try {
+        const payload = await requestJson(`/api/page-records/${ALLOC_PAGE_RECORD_TYPE}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ record: {
+            date: document.getElementById("allocDate").value,
+            route: document.getElementById("allocRoute").value,
+            amount
+          }})
+        });
+        allocations.unshift(payload.record);
+      } catch (error) {
+        alert(error.message);
+        return;
+      }
+
+      document.getElementById("allocAmount").value = "";
+      renderAllocations();
+    }
+
+    async function deleteAllocation(id) {
+      const actor = prompt("Nhập tên người xoá");
+      if (actor === null) return;
+      if (!actor.trim()) {
+        alert("Vui lòng nhập tên người xoá");
+        return;
+      }
+
+      const password = prompt("Nhập mật khẩu xoá phiếu");
+      if (password === null) return;
+
+      try {
+        await requestJson(`/api/page-records/${ALLOC_PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actor, password })
+        });
+        allocations = allocations.filter(a => a.id !== id);
+        renderAllocations();
       } catch (error) {
         alert(error.message);
       }
@@ -408,18 +479,8 @@
     }
 
     function initFilters() {
-      const routeSelect = document.getElementById("route");
-      const filterRoute = document.getElementById("filterRoute");
-      routes.forEach(r => {
-        routeSelect.appendChild(new Option(r, r));
-        filterRoute.appendChild(new Option(r, r));
-      });
-    }
-
-    function switchMainTab(tab) {
-      document.querySelectorAll(".summaryTabBtn[data-maintab]").forEach(btn => btn.classList.toggle("active", btn.dataset.maintab === tab));
-      document.getElementById("mainTabDetail").classList.toggle("hidden", tab !== "detail");
-      document.getElementById("mainTabStats").classList.toggle("hidden", tab !== "stats");
+      const allocRoute = document.getElementById("allocRoute");
+      routes.forEach(r => allocRoute.appendChild(new Option(r, r)));
     }
 
     function updatePreview() {
@@ -437,7 +498,6 @@
         await saveRecord({
           date: document.getElementById("date").value,
           payer: document.getElementById("payer").value,
-          route: document.getElementById("route").value,
           amount,
           status: document.getElementById("status").value,
           note: document.getElementById("note").value
@@ -459,11 +519,9 @@
 
     function renderTable() {
       const tbody = document.getElementById("tbody");
-      const fr = document.getElementById("filterRoute").value;
       const fs = document.getElementById("filterStatus").value;
 
       const filtered = records.filter(r =>
-        (!fr || r.route === fr) &&
         (!fs || r.status === fs) &&
         matchesDateFilter(r.date)
       );
@@ -472,7 +530,6 @@
         <tr>
           <td>${escapeHtml(r.date)}</td>
           <td>${escapeHtml(r.payer)}</td>
-          <td>${escapeHtml(r.route)}</td>
           <td><strong>${money(r.amount)}</strong></td>
           <td><span class="badge ${badgeClass(r.status)}">${escapeHtml(r.status)}</span></td>
           <td>${escapeHtml(r.note || "")}</td>
@@ -481,7 +538,7 @@
       `).join("");
 
       renderSummary(filtered);
-      renderGroupTable(filtered);
+      renderAllocations();
     }
 
     function renderSummary(data) {
@@ -494,30 +551,33 @@
       document.getElementById("sumUnpaid").textContent = money(unpaid);
     }
 
-    function renderGroupTable(data) {
-      document.getElementById("summaryByRouteBody").innerHTML = routes.map(route => {
-        const rows = data.filter(r => r.route === route);
-        const total = rows.reduce((s, r) => s + r.amount, 0);
-        const paid = rows.reduce((s, r) => s + (r.status === "Đã thanh toán" ? r.amount : 0), 0);
-        const unpaid = rows.reduce((s, r) => s + (r.status === "Chưa thanh toán" ? r.amount : 0), 0);
-        return `
-          <tr>
-            <td>${escapeHtml(route)}</td>
-            <td>${rows.length}</td>
-            <td><strong>${money(total)}</strong></td>
-            <td>${money(paid)}</td>
-            <td>${money(unpaid)}</td>
-          </tr>
-        `;
-      }).join("");
+    function renderAllocations() {
+      const filtered = allocations.filter(a => matchesDateFilter(a.date));
+
+      document.getElementById("allocTbody").innerHTML = filtered.map(a => `
+        <tr>
+          <td>${escapeHtml(a.date)}</td>
+          <td>${escapeHtml(a.route)}</td>
+          <td><strong>${money(a.amount)}</strong></td>
+          <td><button class="deleteBtn" type="button" onclick="deleteAllocation('${escapeHtml(a.id)}')">Xoá</button></td>
+        </tr>
+      `).join("");
+
+      const allocatedTotal = filtered.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+      const realSpendTotal = records.filter(r => matchesDateFilter(r.date)).reduce((s, r) => s + r.amount, 0);
+
+      document.getElementById("allocTotalSpend").textContent = money(realSpendTotal);
+      document.getElementById("allocAllocated").textContent = money(allocatedTotal);
+      document.getElementById("allocRemaining").textContent = money(realSpendTotal - allocatedTotal);
     }
 
     async function initPage() {
       initFilters();
       document.getElementById("date").valueAsDate = new Date();
+      document.getElementById("allocDate").valueAsDate = new Date();
       setupDateFilterPickers();
       try {
-        await loadRecords();
+        await Promise.all([loadRecords(), loadAllocations()]);
       } catch (error) {
         alert(error.message);
       }

@@ -32,6 +32,8 @@ var pageRecordTypes = [
   'marketing-phan-bo-chieu',
   'gia-von',
   'chi-phi-viettel-post',
+  'chi-phi-viettel-post-phan-bo-chieu',
+  'nhan-su',
   'doanh-thu-gia-von',
   'doanh-thu',
   'lich-lam-tu-van'

@@ -60,7 +60,7 @@
   <div class="page-head">
     <div>
       <h1>Doanh thu</h1>
-      <div class="sub">Chi tiết chi phí phát sinh theo từng chiều vận chuyển: vận chuyển và nhân viên phụ trách nhập tay; Giá vốn, Ads, Marketing, Đền bù, Ưu đãi và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
+      <div class="sub">Chi tiết chi phí phát sinh theo từng chiều vận chuyển: tên nhân viên phụ trách và chi phí khác nhập tay; Giá vốn, Ads, Marketing, Đền bù, Ưu đãi, Phí Viettel Post, Phí nhân viên phụ trách và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
@@ -92,14 +92,6 @@
       <div>
         <label>Doanh thu</label>
         <input id="revenue" inputmode="numeric" placeholder="Ví dụ: 250.000.000">
-      </div>
-      <div>
-        <label>Phí vận chuyển trong nước</label>
-        <input id="domesticShipping" inputmode="numeric" placeholder="Ví dụ: 2.000.000">
-      </div>
-      <div>
-        <label>Vận chuyển nước ngoài</label>
-        <input id="intlShipping" inputmode="numeric" placeholder="Ví dụ: 4.000.000">
       </div>
       <div>
         <label>Nhân viên phụ trách</label>
@@ -158,10 +150,10 @@
             <th>MARKETING</th>
             <th>ĐỀN BÙ</th>
             <th>ƯU ĐÃI</th>
-            <th>PHÍ VC TRONG NƯỚC</th>
+            <th>PHÍ VIETTEL POST</th>
             <th>PHÍ HOẠT ĐỘNG CỬA HÀNG</th>
-            <th>VC NƯỚC NGOÀI</th>
             <th>NV PHỤ TRÁCH</th>
+            <th>PHÍ NHÂN VIÊN PHỤ TRÁCH</th>
             <th>CHI PHÍ KHÁC</th>
             <th>TỔNG CHI PHÍ</th>
             <th>LÃI HOẠT ĐỘNG</th>
@@ -188,8 +180,6 @@
       <div><label>Số kiện</label><input id="ePackages" type="number" min="0"></div>
       <div><label>Số kg</label><input id="eKg" type="number" min="0" step="0.01"></div>
       <div><label>Doanh thu</label><input id="eRevenue"></div>
-      <div><label>Phí vận chuyển trong nước</label><input id="eDomesticShipping"></div>
-      <div><label>Vận chuyển nước ngoài</label><input id="eIntlShipping"></div>
       <div><label>Nhân viên phụ trách</label><input id="eStaffInCharge"></div>
       <div><label>Chi phí khác</label><input id="eOtherCost"></div>
     </div>
@@ -208,8 +198,8 @@
 <script>
 const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Việt Úc","Úc Việt","Việt Canada","Việt Đức","Việt Pháp","Việt Châu Âu","Việt Châu Âu - Đông Lạnh","Việt Séc","Đức Việt","Shopee"];
 const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
-const editableCostFields = ["domesticShipping","intlShipping","otherCost"];
-const autoCostFields = ["ads","marketing","compensation","discount","storeOpFee"];
+const editableCostFields = ["otherCost"];
+const autoCostFields = ["ads","viettelPost","staffFee","marketing","compensation","discount","storeOpFee"];
 const PAGE_RECORD_TYPE = "doanh-thu";
 let records = [];
 let editId = null;
@@ -227,6 +217,8 @@ let discountMap = {};
 let storeOpFeeMap = {};
 let giaVonMap = {};
 let adsMap = {};
+let viettelPostMap = {};
+let staffFeeMap = {};
 
 const escapeHtml = value => String(value == null ? "" : value)
   .replaceAll("&", "&amp;")
@@ -260,12 +252,14 @@ function autoValue(map, route, date) {
   return map[bucketKey(route, date)] || 0;
 }
 async function loadAutoCostMaps() {
-  const [khieuNaiPayload, marketingPayload, bootstrapPayload, giaVonPayload, allocPayload] = await Promise.all([
+  const [khieuNaiPayload, marketingPayload, bootstrapPayload, giaVonPayload, allocPayload, viettelPostAllocPayload, nhanSuPayload] = await Promise.all([
     requestJson("/api/page-records/khieu-nai-den-bu"),
     requestJson("/api/page-records/chi-tieu-noi-bo"),
     requestJson("/api/bootstrap"),
     requestJson("/api/page-records/gia-von"),
-    requestJson("/api/page-records/marketing-phan-bo-chieu")
+    requestJson("/api/page-records/marketing-phan-bo-chieu"),
+    requestJson("/api/page-records/chi-phi-viettel-post-phan-bo-chieu"),
+    requestJson("/api/page-records/nhan-su")
   ]);
   const khieuNaiRecords = khieuNaiPayload.records || [];
   compensationMap = buildSumMap(khieuNaiRecords, r => r.route, r => r.date, r => r.loss, r => r.category !== "Hoàn ưu đãi");
@@ -288,6 +282,12 @@ async function loadAutoCostMaps() {
     r => (Number(r.facebook)||0) + (Number(r.tiktok)||0) + (Number(r.koc)||0) + (Number(r.other)||0),
     null
   );
+
+  const viettelPostAllocRecords = viettelPostAllocPayload.records || [];
+  viettelPostMap = buildSumMap(viettelPostAllocRecords, r => r.route, r => r.date, r => r.amount, null);
+
+  const nhanSuRecords = nhanSuPayload.records || [];
+  staffFeeMap = buildSumMap(nhanSuRecords, r => r.route, r => r.date, r => r.amount, r => r.category === "Phí nhân viên phụ trách theo chiều");
 }
 function attachAutoCosts(rows) {
   const seen = new Set();
@@ -299,6 +299,8 @@ function attachAutoCosts(rows) {
       ...r,
       cost: isFirst ? autoValue(giaVonMap, r.route, r.date) : 0,
       ads: isFirst ? autoValue(adsMap, r.route, r.date) : 0,
+      viettelPost: isFirst ? autoValue(viettelPostMap, r.route, r.date) : 0,
+      staffFee: isFirst ? autoValue(staffFeeMap, r.route, r.date) : 0,
       marketing: isFirst ? autoValue(marketingMap, r.route, r.date) : 0,
       compensation: isFirst ? autoValue(compensationMap, r.route, r.date) : 0,
       discount: isFirst ? autoValue(discountMap, r.route, r.date) : 0,
@@ -405,7 +407,7 @@ function setupDateFilterPickers() {
 function fmt(n){return new Intl.NumberFormat("vi-VN").format(Number(n)||0)}
 function money(n){return fmt(n)+" đ"}
 function parseMoney(v){return Number(String(v).replace(/[^\d-]/g,""))||0}
-function totalCost(r){return editableCostFields.reduce((sum,f)=>sum+r[f],0)+autoCostFields.reduce((sum,f)=>sum+(r[f]||0),0)+parseMoney(r.staffInCharge)}
+function totalCost(r){return editableCostFields.reduce((sum,f)=>sum+r[f],0)+autoCostFields.reduce((sum,f)=>sum+(r[f]||0),0)}
 function operatingProfit(r){return r.revenue-r.cost-totalCost(r)}
 function operatingMargin(r){return r.revenue ? operatingProfit(r)/r.revenue*100 : 0}
 function setupRoutes(){
@@ -430,7 +432,7 @@ function render(){
   const tb=document.getElementById("tbody");
   const filtered=attachAutoCosts(records.filter(r=>matchesFilters(r)));
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="20" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="21" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>{
       const profit=operatingProfit(r), marginVal=operatingMargin(r);
@@ -447,10 +449,10 @@ function render(){
         <td class="money-cost">${fmt(r.marketing)}</td>
         <td class="money-cost">${fmt(r.compensation)}</td>
         <td class="money-cost">${fmt(r.discount)}</td>
-        <td class="money-cost">${fmt(r.domesticShipping)}</td>
+        <td class="money-cost">${fmt(r.viettelPost)}</td>
         <td class="money-cost">${fmt(r.storeOpFee)}</td>
-        <td class="money-cost">${fmt(r.intlShipping)}</td>
         <td>${escapeHtml(r.staffInCharge)}</td>
+        <td class="money-cost">${fmt(r.staffFee)}</td>
         <td class="money-cost">${fmt(r.otherCost)}</td>
         <td class="money-cost">${fmt(totalCost(r))}</td>
         <td class="money-profit${profit<0?" negative":""}">${fmt(profit)}</td>
@@ -465,10 +467,9 @@ function render(){
   const total=filtered.reduce((a,r)=>({
     packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,cost:a.cost+r.cost,
     ads:a.ads+r.ads,marketing:a.marketing+r.marketing,compensation:a.compensation+r.compensation,
-    discount:a.discount+r.discount,domesticShipping:a.domesticShipping+r.domesticShipping,
-    storeOpFee:a.storeOpFee+r.storeOpFee,
-    intlShipping:a.intlShipping+r.intlShipping,otherCost:a.otherCost+r.otherCost
-  }),{packages:0,kg:0,revenue:0,cost:0,ads:0,marketing:0,compensation:0,discount:0,domesticShipping:0,storeOpFee:0,intlShipping:0,otherCost:0});
+    discount:a.discount+r.discount,viettelPost:a.viettelPost+r.viettelPost,staffFee:a.staffFee+r.staffFee,
+    storeOpFee:a.storeOpFee+r.storeOpFee,otherCost:a.otherCost+r.otherCost
+  }),{packages:0,kg:0,revenue:0,cost:0,ads:0,marketing:0,compensation:0,discount:0,viettelPost:0,staffFee:0,storeOpFee:0,otherCost:0});
   const totalCostSum = filtered.reduce((sum,r)=>sum+totalCost(r),0);
   const p=total.revenue-total.cost-totalCostSum, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
@@ -476,9 +477,8 @@ function render(){
     <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td>
     <td class="money-cost">${fmt(total.ads)}</td><td class="money-cost">${fmt(total.marketing)}</td>
     <td class="money-cost">${fmt(total.compensation)}</td><td class="money-cost">${fmt(total.discount)}</td>
-    <td class="money-cost">${fmt(total.domesticShipping)}</td><td class="money-cost">${fmt(total.storeOpFee)}</td>
-    <td class="money-cost">${fmt(total.intlShipping)}</td>
-    <td></td><td class="money-cost">${fmt(total.otherCost)}</td>
+    <td class="money-cost">${fmt(total.viettelPost)}</td><td class="money-cost">${fmt(total.storeOpFee)}</td>
+    <td></td><td class="money-cost">${fmt(total.staffFee)}</td><td class="money-cost">${fmt(total.otherCost)}</td>
     <td class="money-cost">${fmt(totalCostSum)}</td>
     <td class="money-profit${p<0?" negative":""}">${fmt(p)}</td><td class="margin${m<0?" negative":""}">${m.toFixed(2)}%</td><td></td></tr>`;
   sRevenue.textContent=money(total.revenue); sCostOfGoods.textContent=money(total.cost);
@@ -600,8 +600,8 @@ async function resetData(){
   }
 }
 function exportCSV(){
-  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Ads","Marketing","Đền bù","Ưu đãi","Phí VC trong nước","Phí hoạt động cửa hàng","VC nước ngoài","NV phụ trách","Chi phí khác","Tổng chi phí","Lãi hoạt động","Tỉ suất lãi hoạt động"]];
-  attachAutoCosts(records.filter(r=>matchesFilters(r))).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.domesticShipping,r.storeOpFee,r.intlShipping,r.staffInCharge,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
+  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Ads","Marketing","Đền bù","Ưu đãi","Phí Viettel Post","Phí hoạt động cửa hàng","NV phụ trách","Phí nhân viên phụ trách","Chi phí khác","Tổng chi phí","Lãi hoạt động","Tỉ suất lãi hoạt động"]];
+  attachAutoCosts(records.filter(r=>matchesFilters(r))).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.viettelPost,r.storeOpFee,r.staffInCharge,r.staffFee,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu.csv";a.click();

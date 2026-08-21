@@ -19,7 +19,7 @@
   .mvp-page label{display:block;font-size:12px;font-weight:800;margin-bottom:7px}
   .mvp-page input,.mvp-page select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;outline:none}
   .mvp-page input:focus,.mvp-page select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,140,248,.12)}
-  .mvp-page .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .mvp-page .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px}
   .mvp-page .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
   .mvp-page .stat span{font-size:12px;color:var(--muted);font-weight:700}
   .mvp-page .stat strong{display:block;font-size:22px;margin-top:8px}
@@ -47,7 +47,7 @@
   .modal-head .close{background:#eef2f7;padding:8px 11px;border:0;border-radius:10px;font-weight:700;cursor:pointer}
   .toast{position:fixed;right:24px;bottom:24px;background:#111827;color:#fff;padding:12px 16px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.25s;z-index:40}
   .toast.show{opacity:1;transform:translateY(0)}
-  @media(max-width:1100px){.mvp-page .stats{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:1100px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}}
   @media(max-width:760px){.mvp-page .stats{grid-template-columns:1fr}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
 </style>
 
@@ -55,7 +55,7 @@
   <div class="page-head">
     <div>
       <h1>Báo cáo lãi gộp</h1>
-      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Doanh thu tự động đồng bộ từ dữ liệu đã nhập ở trang Doanh thu; Giá vốn (Công nợ) nhập/sửa tay riêng tại trang này. Hệ thống tự tính lãi gộp và tỷ suất.</div>
+      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Doanh thu tự động đồng bộ từ dữ liệu đã nhập ở trang Doanh thu; Giá vốn (Công nợ) nhập/sửa tay riêng tại trang này; Phí Viettel Post tự động đồng bộ theo Tháng + Chiều từ trang Chi phí Viettel Post và được cộng vào Tổng giá vốn cho các chiều từ nước ngoài về Việt Nam. Hệ thống tự tính lãi gộp và tỷ suất.</div>
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
@@ -65,7 +65,8 @@
 
   <section class="stats">
     <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
-    <div class="stat"><span>TỔNG GIÁ VỐN</span><strong id="sCost">0 đ</strong></div>
+    <div class="stat"><span>TỔNG GIÁ VỐN (CÔNG NỢ)</span><strong id="sCost">0 đ</strong></div>
+    <div class="stat"><span>TỔNG PHÍ VIETTEL POST (GIÁ VỐN)</span><strong id="sViettelPost">0 đ</strong></div>
     <div class="stat"><span>TỔNG LÃI GỘP</span><strong id="sProfit">0 đ</strong></div>
     <div class="stat"><span>TỶ SUẤT LÃI GỘP</span><strong id="sMargin">0%</strong></div>
   </section>
@@ -100,6 +101,8 @@
             <th>SỐ KG</th>
             <th>DOANH THU</th>
             <th>GIÁ VỐN (CÔNG NỢ)</th>
+            <th>PHÍ VIETTEL POST</th>
+            <th>TỔNG GIÁ VỐN</th>
             <th>LÃI GỘP</th>
             <th>TỶ SUẤT LÃI GỘP</th>
             <th>THAO TÁC</th>
@@ -137,8 +140,10 @@ const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Vi�
 const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
 const SOURCE_PAGE_RECORD_TYPE = "doanh-thu";
 const COST_PAGE_RECORD_TYPE = "doanh-thu-gia-von";
+const VIETTEL_POST_ALLOC_TYPE = "chi-phi-viettel-post-phan-bo-chieu";
 let records = [];
 let costOverrides = [];
+let viettelPostMap = {};
 function currentMonthKey() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
@@ -168,6 +173,24 @@ async function loadRecords() {
 async function loadCostOverrides() {
   const payload = await requestJson(`/api/page-records/${COST_PAGE_RECORD_TYPE}`);
   costOverrides = payload.records || [];
+}
+async function loadViettelPostAllocations() {
+  const payload = await requestJson(`/api/page-records/${VIETTEL_POST_ALLOC_TYPE}`);
+  const allocations = payload.records || [];
+  viettelPostMap = {};
+  allocations.forEach(a => {
+    const key = bucketKey(a.route, a.date);
+    viettelPostMap[key] = (viettelPostMap[key] || 0) + (Number(a.amount) || 0);
+  });
+}
+function monthKey(dateStr){ return String(dateStr || "").slice(0, 7); }
+function bucketKey(route, dateStr){ return route + "|" + monthKey(dateStr); }
+function isInboundRoute(route){ return String(route || "").endsWith(" Việt"); }
+function viettelPostOf(r) {
+  return viettelPostMap[bucketKey(r.route, r.date)] || 0;
+}
+function totalCostOf(r) {
+  return costOf(r) + (isInboundRoute(r.route) ? viettelPostOf(r) : 0);
 }
 function findOverride(route, date) {
   return costOverrides.find(o => o.route === route && o.date === date);
@@ -246,7 +269,7 @@ function setupDateFilterPickers() {
 function fmt(n){return new Intl.NumberFormat("vi-VN").format(Number(n)||0)}
 function money(n){return fmt(n)+" đ"}
 function parseMoney(v){return Number(String(v).replace(/[^\d-]/g,""))||0}
-function profit(r){return r.revenue-costOf(r)}
+function profit(r){return r.revenue-totalCostOf(r)}
 function margin(r){return r.revenue ? profit(r)/r.revenue*100 : 0}
 function setupRoutes(){
   document.getElementById("filterRoute").innerHTML =
@@ -262,10 +285,10 @@ function render(){
   const tb=document.getElementById("tbody");
   const filtered=records.filter(r=>matchesFilters(r));
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="9" class="empty">Chưa có dữ liệu ở trang Doanh thu.</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="11" class="empty">Chưa có dữ liệu ở trang Doanh thu.</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>{
-      const costVal=costOf(r), profitVal=profit(r), marginVal=margin(r);
+      const costVal=costOf(r), viettelPostVal=isInboundRoute(r.route)?viettelPostOf(r):0, totalCostVal=totalCostOf(r), profitVal=profit(r), marginVal=margin(r);
       return `
       <tr>
         <td>${escapeHtml(r.date)}</td>
@@ -274,6 +297,8 @@ function render(){
         <td>${fmt(r.kg)}</td>
         <td class="money-revenue">${fmt(r.revenue)}</td>
         <td class="money-cost">${fmt(costVal)}</td>
+        <td class="money-cost">${fmt(viettelPostVal)}</td>
+        <td class="money-cost">${fmt(totalCostVal)}</td>
         <td class="money-profit${profitVal<0?" negative":""}">${fmt(profitVal)}</td>
         <td class="margin${marginVal<0?" negative":""}">${marginVal.toFixed(2)}%</td>
         <td><button class="edit" onclick="openEdit('${r.id}')">✎ Sửa</button></td>
@@ -282,14 +307,19 @@ function render(){
   }
   const total=filtered.reduce((a,r)=>({
     packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,
-    cost:a.cost+costOf(r)
-  }),{packages:0,kg:0,revenue:0,cost:0});
-  const p=total.revenue-total.cost, m=total.revenue?p/total.revenue*100:0;
+    cost:a.cost+costOf(r),
+    viettelPost:a.viettelPost+(isInboundRoute(r.route)?viettelPostOf(r):0),
+    totalCost:a.totalCost+totalCostOf(r)
+  }),{packages:0,kg:0,revenue:0,cost:0,viettelPost:0,totalCost:0});
+  const p=total.revenue-total.totalCost, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
     <tr><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
-    <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td><td class="money-profit${p<0?" negative":""}">${fmt(p)}</td>
+    <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td>
+    <td class="money-cost">${fmt(total.viettelPost)}</td><td class="money-cost">${fmt(total.totalCost)}</td>
+    <td class="money-profit${p<0?" negative":""}">${fmt(p)}</td>
     <td class="margin${m<0?" negative":""}">${m.toFixed(2)}%</td><td></td></tr>`;
   sRevenue.textContent=money(total.revenue); sCost.textContent=money(total.cost);
+  sViettelPost.textContent=money(total.viettelPost);
   sProfit.textContent=money(p); sMargin.textContent=m.toFixed(2)+"%";
 }
 let editRoute = null, editDate = null;
@@ -326,8 +356,8 @@ async function saveEditCost(){
 }
 window.onclick=e=>{if(e.target===modal)closeModal()}
 function exportCSV(){
-  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
-  records.filter(r=>matchesFilters(r)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,costOf(r),profit(r),margin(r).toFixed(2)+"%"]));
+  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn (Công nợ)","Phí Viettel Post","Tổng giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
+  records.filter(r=>matchesFilters(r)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,costOf(r),isInboundRoute(r.route)?viettelPostOf(r):0,totalCostOf(r),profit(r),margin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bao-cao-lai-gop.csv";a.click();
@@ -342,7 +372,7 @@ async function init(){
   setupDateFilterPickers();
   render();
   try {
-    await Promise.all([loadRecords(), loadCostOverrides()]);
+    await Promise.all([loadRecords(), loadCostOverrides(), loadViettelPostAllocations()]);
   } catch (error) {
     toast(error.message);
   }

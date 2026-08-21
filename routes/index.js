@@ -79,6 +79,13 @@ router.get('/chi-phi-viettel-post', function(req, res) {
   });
 });
 
+router.get('/nhan-su', function(req, res) {
+  res.render('pages/amamy_mvp_nhan_su', {
+    title: 'Amamy - Nhân sự',
+    navNhanSu: true
+  });
+});
+
 router.get('/lich-lam-tu-van', function(req, res) {
   res.render('pages/mvp_xep_lich_tinh_luong', {
     title: 'Amamy - Lịch làm tư vấn',
