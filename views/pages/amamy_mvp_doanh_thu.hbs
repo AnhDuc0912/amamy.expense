@@ -59,8 +59,8 @@
 <div class="mvp-page">
   <div class="page-head">
     <div>
-      <h1>Doanh thu</h1>
-      <div class="sub">Chi tiết chi phí phát sinh theo từng chiều vận chuyển: tên nhân viên phụ trách và chi phí khác nhập tay; Giá vốn, Ads, Marketing, Đền bù, Ưu đãi, Phí Viettel Post, Phí nhân viên phụ trách và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
+      <h1>Báo cáo lãi hoạt động</h1>
+      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Số khách hàng, Doanh thu tự động đồng bộ từ dữ liệu đã nhập ở trang Báo cáo lãi gộp (mục Doanh thu, sản lượng); tên nhân viên phụ trách và chi phí khác nhập/sửa tay riêng tại trang này (bấm Sửa ở từng dòng); Giá vốn, Ads, Marketing, Đền bù, Ưu đãi, Phí Viettel Post, Phí nhân viên phụ trách và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
@@ -69,43 +69,6 @@
       <a class="btn-light" style="display:inline-flex;align-items:center;text-decoration:none" href="/doanh-thu/logout">Đăng xuất</a>
     </div>
   </div>
-
-  <section class="card">
-    <div class="card-title">NHẬP DỮ LIỆU</div>
-    <div class="grid">
-      <div>
-        <label>Ngày</label>
-        <input id="entryDate" type="date">
-      </div>
-      <div>
-        <label>Chọn chiều</label>
-        <select id="route"></select>
-      </div>
-      <div>
-        <label>Số kiện</label>
-        <input id="packages" type="number" min="0" placeholder="Ví dụ: 120">
-      </div>
-      <div>
-        <label>Số kg</label>
-        <input id="kg" type="number" min="0" step="0.01" placeholder="Ví dụ: 1.250">
-      </div>
-      <div>
-        <label>Doanh thu</label>
-        <input id="revenue" inputmode="numeric" placeholder="Ví dụ: 250.000.000">
-      </div>
-      <div>
-        <label>Nhân viên phụ trách</label>
-        <input id="staffInCharge" placeholder="Ví dụ: Ngọc Anh">
-      </div>
-      <div>
-        <label>Chi phí khác</label>
-        <input id="otherCost" inputmode="numeric" placeholder="Ví dụ: 500.000">
-      </div>
-    </div>
-    <div style="margin-top:15px;display:flex;justify-content:flex-end">
-      <button class="btn-primary" onclick="addRecord()">+ Thêm dữ liệu</button>
-    </div>
-  </section>
 
   <section class="stats">
     <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
@@ -144,6 +107,7 @@
             <th>CHIỀU VẬN CHUYỂN</th>
             <th>SỐ KIỆN</th>
             <th>SỐ KG</th>
+            <th>SỐ KHÁCH HÀNG</th>
             <th>DOANH THU</th>
             <th>GIÁ VỐN (CÔNG NỢ)</th>
             <th>ADS</th>
@@ -179,6 +143,7 @@
       <div><label>Chiều vận chuyển</label><select id="eRoute"></select></div>
       <div><label>Số kiện</label><input id="ePackages" type="number" min="0"></div>
       <div><label>Số kg</label><input id="eKg" type="number" min="0" step="0.01"></div>
+      <div><label>Số khách hàng</label><input id="eCustomers" type="number" min="0"></div>
       <div><label>Doanh thu</label><input id="eRevenue"></div>
       <div><label>Nhân viên phụ trách</label><input id="eStaffInCharge"></div>
       <div><label>Chi phí khác</label><input id="eOtherCost"></div>
@@ -308,14 +273,6 @@ function attachAutoCosts(rows) {
     };
   });
 }
-async function createRecord(record) {
-  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({record})
-  });
-  records.unshift(normalizeRecord(payload.record));
-}
 async function updateRecord(id, record) {
   const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
     method: "PUT",
@@ -340,6 +297,7 @@ function normalizeRecord(record) {
     route: routes.includes(record.route) ? record.route : routes[0],
     packages: Number(record.packages) || 0,
     kg: Number(record.kg) || 0,
+    customers: Number(record.customers) || 0,
     revenue: Number(record.revenue) || 0,
     staffInCharge: record.staffInCharge || "",
     createdAt: record.createdAt || ""
@@ -411,14 +369,11 @@ function totalCost(r){return editableCostFields.reduce((sum,f)=>sum+r[f],0)+auto
 function operatingProfit(r){return r.revenue-r.cost-totalCost(r)}
 function operatingMargin(r){return r.revenue ? operatingProfit(r)/r.revenue*100 : 0}
 function setupRoutes(){
-  ["route","eRoute"].forEach(id=>{
-    document.getElementById(id).innerHTML = routes.map(r=>`<option>${r}</option>`).join("");
-  });
+  document.getElementById("eRoute").innerHTML = routes.map(r=>`<option>${r}</option>`).join("");
   document.getElementById("filterRoute").innerHTML =
     `<option value="">Tất cả chiều</option>` + routes.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
 }
-const moneyInputIds = ["revenue","eRevenue",
-  ...editableCostFields,
+const moneyInputIds = ["eRevenue",
   ...editableCostFields.map(f=>"e"+f[0].toUpperCase()+f.slice(1))];
 moneyInputIds.forEach(id=>{
   document.addEventListener("input",e=>{
@@ -432,7 +387,7 @@ function render(){
   const tb=document.getElementById("tbody");
   const filtered=attachAutoCosts(records.filter(r=>matchesFilters(r)));
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="21" class="empty">Chưa có dữ liệu. Hãy nhập bản ghi đầu tiên.</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="21" class="empty">Chưa có dữ liệu. Hãy nhập ở trang Báo cáo lãi gộp (mục Doanh thu, sản lượng).</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>{
       const profit=operatingProfit(r), marginVal=operatingMargin(r);
@@ -443,6 +398,7 @@ function render(){
         <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
         <td>${fmt(r.packages)}</td>
         <td>${fmt(r.kg)}</td>
+        <td>${fmt(r.customers)}</td>
         <td class="money-revenue">${fmt(r.revenue)}</td>
         <td class="money-cost">${fmt(r.cost)}</td>
         <td class="money-cost">${fmt(r.ads)}</td>
@@ -465,15 +421,15 @@ function render(){
     }).join("");
   }
   const total=filtered.reduce((a,r)=>({
-    packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,cost:a.cost+r.cost,
+    packages:a.packages+r.packages,kg:a.kg+r.kg,customers:a.customers+r.customers,revenue:a.revenue+r.revenue,cost:a.cost+r.cost,
     ads:a.ads+r.ads,marketing:a.marketing+r.marketing,compensation:a.compensation+r.compensation,
     discount:a.discount+r.discount,viettelPost:a.viettelPost+r.viettelPost,staffFee:a.staffFee+r.staffFee,
     storeOpFee:a.storeOpFee+r.storeOpFee,otherCost:a.otherCost+r.otherCost
-  }),{packages:0,kg:0,revenue:0,cost:0,ads:0,marketing:0,compensation:0,discount:0,viettelPost:0,staffFee:0,storeOpFee:0,otherCost:0});
+  }),{packages:0,kg:0,customers:0,revenue:0,cost:0,ads:0,marketing:0,compensation:0,discount:0,viettelPost:0,staffFee:0,storeOpFee:0,otherCost:0});
   const totalCostSum = filtered.reduce((sum,r)=>sum+totalCost(r),0);
   const p=total.revenue-total.cost-totalCostSum, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
-    <tr><td></td><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
+    <tr><td></td><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td><td>${fmt(total.customers)}</td>
     <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td>
     <td class="money-cost">${fmt(total.ads)}</td><td class="money-cost">${fmt(total.marketing)}</td>
     <td class="money-cost">${fmt(total.compensation)}</td><td class="money-cost">${fmt(total.discount)}</td>
@@ -506,25 +462,9 @@ function updateSelectionUI(filtered){
     selectAll.indeterminate = selectedCount>0 && selectedCount<filtered.length;
   }
 }
-async function addRecord(){
-  const r={
-    date:entryDate.value,route:route.value,packages:Number(packages.value)||0,
-    kg:Number(kg.value)||0,revenue:parseMoney(revenue.value),staffInCharge:staffInCharge.value.trim()
-  };
-  editableCostFields.forEach(f=>r[f]=parseMoney(document.getElementById(f).value));
-  const hasManualData = r.packages||r.kg||r.revenue||editableCostFields.some(f=>r[f]);
-  if(!hasManualData){toast("Vui lòng nhập dữ liệu.");return}
-  try {
-    await createRecord(r);render();
-    ["packages","kg","revenue","staffInCharge",...editableCostFields].forEach(id=>document.getElementById(id).value="");
-    toast("Đã thêm dữ liệu.");
-  } catch (error) {
-    toast(error.message);
-  }
-}
 function openEdit(id){
   editId=id; const r=records.find(x=>x.id===id); if(!r)return;
-  eDate.value=r.date;eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;
+  eDate.value=r.date;eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;eCustomers.value=r.customers;
   eRevenue.value=fmt(r.revenue);eStaffInCharge.value=r.staffInCharge;
   editableCostFields.forEach(f=>{
     document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value=fmt(r[f]);
@@ -535,7 +475,7 @@ function closeModal(){modal.classList.remove("show");editId=null}
 async function saveEdit(){
   const i=records.findIndex(x=>x.id===editId); if(i<0)return;
   const updated={date:eDate.value,route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
-    revenue:parseMoney(eRevenue.value),staffInCharge:eStaffInCharge.value.trim()};
+    customers:Number(eCustomers.value)||0,revenue:parseMoney(eRevenue.value),staffInCharge:eStaffInCharge.value.trim()};
   editableCostFields.forEach(f=>{
     updated[f]=parseMoney(document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value);
   });
@@ -600,8 +540,8 @@ async function resetData(){
   }
 }
 function exportCSV(){
-  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn","Ads","Marketing","Đền bù","Ưu đãi","Phí Viettel Post","Phí hoạt động cửa hàng","NV phụ trách","Phí nhân viên phụ trách","Chi phí khác","Tổng chi phí","Lãi hoạt động","Tỉ suất lãi hoạt động"]];
-  attachAutoCosts(records.filter(r=>matchesFilters(r))).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.viettelPost,r.storeOpFee,r.staffInCharge,r.staffFee,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
+  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Số khách hàng","Doanh thu","Giá vốn","Ads","Marketing","Đền bù","Ưu đãi","Phí Viettel Post","Phí hoạt động cửa hàng","NV phụ trách","Phí nhân viên phụ trách","Chi phí khác","Tổng chi phí","Lãi hoạt động","Tỉ suất lãi hoạt động"]];
+  attachAutoCosts(records.filter(r=>matchesFilters(r))).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.customers,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.viettelPost,r.storeOpFee,r.staffInCharge,r.staffFee,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu.csv";a.click();
@@ -613,7 +553,6 @@ function toast(msg){
 }
 window.onclick=e=>{if(e.target===modal)closeModal()}
 async function init(){
-  entryDate.valueAsDate = new Date();
   setupRoutes();
   setupDateFilterPickers();
   render();

@@ -324,6 +324,41 @@
     margin-bottom: 10px
   }
 
+  .lltv .holiday-btn {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    margin-top: 4px;
+    white-space: nowrap
+  }
+
+  .lltv .holiday-btn.active {
+    background: #fde68a;
+    color: #92400e;
+    border-color: #f59e0b
+  }
+
+  .lltv th .emp-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px
+  }
+
+  .lltv .eye-toggle {
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px 5px;
+    font-size: 11px;
+    cursor: pointer;
+    flex-shrink: 0
+  }
+
   @media(max-width:900px) {
     .lltv .grid {
       grid-template-columns: 1fr
@@ -385,19 +420,20 @@
           <button class="ghost" onclick="goToday()">Tuần hiện tại</button>
           <button class="ghost" onclick="exportCSV()">Xuất CSV lương</button>
           <button class="ghost" id="toggleMoneyBtn" onclick="toggleMoney()">👁 Hiện lương ca</button>
+          <button class="ghost" id="toggleMonthSalaryBtn" onclick="toggleMonthSalary()">📅 Hiện lương theo tháng</button>
         </div>
 
         <div class="kpis">
           <div class="kpi">
-            <div class="muted">Tổng số ca</div>
+            <div class="muted" id="kpiShiftsLabel">Tổng số ca</div>
             <div class="v" id="kpiShifts">0</div>
           </div>
           <div class="kpi">
-            <div class="muted">Tổng giờ</div>
+            <div class="muted" id="kpiHoursLabel">Tổng giờ</div>
             <div class="v" id="kpiHours">0</div>
           </div>
           <div class="kpi">
-            <div class="muted">Tổng lương tuần</div>
+            <div class="muted" id="kpiPayLabel">Tổng lương tuần</div>
             <div class="v money" id="kpiPay">0đ</div>
           </div>
         </div>
@@ -407,7 +443,7 @@
         </div>
 
         <div class="summary">
-          <h2>Tổng kết lương theo nhân viên</h2>
+          <h2 id="summaryTitle">Tổng kết lương theo nhân viên (tuần)</h2>
           <div class="table-wrap">
             <table id="summaryTable"></table>
           </div>
@@ -488,11 +524,25 @@
       { border: '#c7d2fe', bg: '#eef2ff' }
     ];
 
+    const HIDDEN_EMP_KEY = 'lltv-hidden-employees';
+
     let employees = [];
     let shifts = [];
+    let holidays = [];
     let defaultRate = { bands: DEFAULT_BANDS, base: DEFAULT_BASE_RATE };
     let defaultRateId = null;
     let moneyVisible = false;
+    let monthSalaryMode = false;
+    let hiddenEmployees = new Set();
+    try { hiddenEmployees = new Set(JSON.parse(localStorage.getItem(HIDDEN_EMP_KEY) || '[]')); } catch (e) { hiddenEmployees = new Set(); }
+
+    function employeeMoneyHidden(name) { return hiddenEmployees.has(name); }
+    function toggleEmployeeMoney(name) {
+      if (hiddenEmployees.has(name)) hiddenEmployees.delete(name); else hiddenEmployees.add(name);
+      try { localStorage.setItem(HIDDEN_EMP_KEY, JSON.stringify([...hiddenEmployees])); } catch (e) { }
+      render();
+    }
+    function isHoliday(dateStr) { return holidays.some(h => h.date === dateStr); }
 
     function employeeColor(name) {
       let hash = 0;
@@ -563,7 +613,27 @@
       for (const [a, b, rate] of segments) {
         pay += overlap(s, e, a, b) / 60 * rate;
       }
-      return pay;
+      return isHoliday(shift.date) ? pay * 2 : pay;
+    }
+
+    async function toggleHoliday(dateStr) {
+      const label = parseISO(dateStr).toLocaleDateString('vi-VN');
+      const existing = holidays.find(h => h.date === dateStr);
+      if (existing) {
+        if (!confirm('Bỏ đánh dấu NGÀY LỄ cho ' + label + '? Lương các ca trong ngày này sẽ trở lại mức bình thường.')) return;
+        if (!confirm('Xác nhận lần 2: bỏ ngày lễ cho ' + label + '?')) return;
+        try {
+          await apiUpdate(existing.id, { kind: 'holiday', date: dateStr, deleted: true });
+          await loadData();
+        } catch (err) { alert(err.message); }
+      } else {
+        if (!confirm('Đánh dấu ' + label + ' là NGÀY LỄ? Toàn bộ lương ca trong ngày này sẽ được nhân đôi (x2).')) return;
+        if (!confirm('Xác nhận lần 2: bạn chắc chắn muốn x2 lương cho ngày ' + label + ' chứ?')) return;
+        try {
+          await apiCreate({ kind: 'holiday', date: dateStr });
+          await loadData();
+        } catch (err) { alert(err.message); }
+      }
     }
 
     async function apiCreate(data) {
@@ -597,6 +667,8 @@
           .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
         shifts = records.filter(r => r.kind === 'shift' && !r.deleted)
           .map(r => ({ id: r.id, employee: r.employee, date: r.date, start: r.start, end: r.end, note: r.note || '' }));
+        holidays = records.filter(r => r.kind === 'holiday' && !r.deleted)
+          .map(r => ({ id: r.id, date: r.date }));
         const settingsRecord = records.find(r => r.kind === 'settings' && !r.deleted);
         if (settingsRecord) {
           defaultRateId = settingsRecord.id;
@@ -784,11 +856,18 @@
       const dates = currentWeekDates();
       const table = document.getElementById('scheduleTable');
       let html = '<thead><tr><th>Nhân viên</th>';
-      dates.forEach(d => html += `<th class="day">${DAYS[d.getDay()]}<br><span class="muted">${d.toLocaleDateString('vi-VN')}</span></th>`);
+      dates.forEach(d => {
+        const ds = iso(d);
+        const holidayActive = isHoliday(ds);
+        html += `<th class="day">${DAYS[d.getDay()]}<br><span class="muted">${d.toLocaleDateString('vi-VN')}</span><br>
+        <button type="button" class="holiday-btn${holidayActive ? ' active' : ''}" onclick="toggleHoliday('${ds}')">${holidayActive ? '🎉 Ngày lễ (x2)' : '+ Ngày lễ'}</button></th>`;
+      });
       html += '</tr></thead><tbody>';
       employees.forEach(emp => {
         const color = employeeColor(emp.name);
-        html += `<tr><th>${emp.name}</th>`;
+        const empHidden = employeeMoneyHidden(emp.name);
+        const nameSafe = emp.name.replaceAll("'", "\\'");
+        html += `<tr><th><div class="emp-name-row"><span>${emp.name}</span><button type="button" class="eye-toggle" title="${empHidden ? 'Hiện lương của ' + emp.name : 'Ẩn lương của ' + emp.name}" onclick="toggleEmployeeMoney('${nameSafe}')">${empHidden ? '🙈' : '👁'}</button></div></th>`;
         dates.forEach(d => {
           const ds = iso(d);
           const dayShifts = shifts.filter(s => s.employee === emp.name && s.date === ds).sort((a, b) => a.start.localeCompare(b.start));
@@ -796,7 +875,7 @@
           html += dayShifts.map(s => `
         <div class="shift" style="border-color:${color.border};background:${color.bg}">
           <strong>${s.start}–${s.end}</strong>
-          <div>${(getShiftMinutes(s) / 60).toFixed(2)} giờ · <span class="money">${moneyVisible ? fmtMoney(calcShiftPay(s)) : '•••'}</span></div>
+          <div>${(getShiftMinutes(s) / 60).toFixed(2)} giờ · <span class="money">${moneyVisible && !empHidden ? fmtMoney(calcShiftPay(s)) : '•••'}</span></div>
           ${s.note ? `<div class="muted">${s.note}</div>` : ''}
           <div class="shift-actions">
             <button class="ghost mini-sm" onclick="openShiftModal('${s.id}')">Sửa</button>
@@ -816,23 +895,40 @@
       document.getElementById('shiftEmployee').value = emp;
       document.getElementById('shiftDate').value = date;
     }
+    function currentMonthDates() {
+      const monthVal = document.getElementById('monthFilter').value || document.getElementById('weekStart').value.slice(0, 7);
+      const [y, m] = monthVal.split('-').map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      return Array.from({ length: daysInMonth }, (_, i) => iso(new Date(y, m - 1, i + 1)));
+    }
     function renderSummary() {
-      const dates = currentWeekDates().map(iso);
-      const weekly = shifts.filter(s => dates.includes(s.date));
+      const periodLabel = monthSalaryMode ? 'tháng' : 'tuần';
+      const dates = monthSalaryMode ? currentMonthDates() : currentWeekDates().map(iso);
+      const periodShifts = shifts.filter(s => dates.includes(s.date));
       let totalPay = 0, totalMinutes = 0;
-      let html = '<thead><tr><th>Nhân viên</th><th>Số ca</th><th>Tổng giờ</th><th>Lương tuần</th></tr></thead><tbody>';
+      document.getElementById('summaryTitle').textContent = 'Tổng kết lương theo nhân viên (' + periodLabel + ')';
+      document.getElementById('kpiShiftsLabel').textContent = 'Tổng số ca (' + periodLabel + ')';
+      document.getElementById('kpiHoursLabel').textContent = 'Tổng giờ (' + periodLabel + ')';
+      document.getElementById('kpiPayLabel').textContent = 'Tổng lương ' + periodLabel;
+      let html = '<thead><tr><th>Nhân viên</th><th>Số ca</th><th>Tổng giờ</th><th>Lương ' + periodLabel + '</th></tr></thead><tbody>';
       employees.forEach(emp => {
-        const arr = weekly.filter(s => s.employee === emp.name);
+        const arr = periodShifts.filter(s => s.employee === emp.name);
         const mins = arr.reduce((a, s) => a + getShiftMinutes(s), 0);
         const pay = arr.reduce((a, s) => a + calcShiftPay(s), 0);
         totalPay += pay; totalMinutes += mins;
-        html += `<tr><td><strong>${emp.name}</strong></td><td>${arr.length}</td><td>${(mins / 60).toFixed(2)}</td><td class="money">${fmtMoney(pay)}</td></tr>`;
+        const empHidden = employeeMoneyHidden(emp.name);
+        html += `<tr><td><strong>${emp.name}</strong></td><td>${arr.length}</td><td>${(mins / 60).toFixed(2)}</td><td class="money">${empHidden ? '•••' : fmtMoney(pay)}</td></tr>`;
       });
-      html += `<tr><th>Tổng</th><th>${weekly.length}</th><th>${(totalMinutes / 60).toFixed(2)}</th><th class="money">${fmtMoney(totalPay)}</th></tr></tbody>`;
+      html += `<tr><th>Tổng</th><th>${periodShifts.length}</th><th>${(totalMinutes / 60).toFixed(2)}</th><th class="money">${fmtMoney(totalPay)}</th></tr></tbody>`;
       document.getElementById('summaryTable').innerHTML = html;
-      document.getElementById('kpiShifts').textContent = weekly.length;
+      document.getElementById('kpiShifts').textContent = periodShifts.length;
       document.getElementById('kpiHours').textContent = (totalMinutes / 60).toFixed(2);
       document.getElementById('kpiPay').textContent = fmtMoney(totalPay);
+    }
+    function toggleMonthSalary() {
+      monthSalaryMode = !monthSalaryMode;
+      document.getElementById('toggleMonthSalaryBtn').textContent = monthSalaryMode ? '📅 Hiện lương theo tuần' : '📅 Hiện lương theo tháng';
+      renderSummary();
     }
     function render() { renderDefaultRates(); renderEmployees(); renderSchedule(); renderSummary(); }
 
@@ -898,5 +994,8 @@
     window.exportCSV = exportCSV;
     window.toggleSidebar = toggleSidebar;
     window.toggleMoney = toggleMoney;
+    window.toggleMonthSalary = toggleMonthSalary;
+    window.toggleHoliday = toggleHoliday;
+    window.toggleEmployeeMoney = toggleEmployeeMoney;
   })();
 </script>

@@ -5,7 +5,7 @@ var doanhThuAccess = require('../services/doanhThuAccess');
 var DOANH_THU_COOKIE = 'doanhThuAccess';
 var DOANH_THU_COOKIE_MAX_AGE = 12 * 60 * 60 * 1000;
 var DOANH_THU_PROTECTED_PAGES = {
-  '/doanh-thu': { title: 'Amamy - Doanh thu', navDoanhThuChiTiet: true, pageLabel: 'Doanh thu' },
+  '/doanh-thu': { title: 'Amamy - Báo cáo lãi hoạt động', navDoanhThuChiTiet: true, pageLabel: 'Báo cáo lãi hoạt động' },
   '/doanh-thu-gia-von': { title: 'Amamy - Báo cáo lãi gộp', navDoanhThu: true, pageLabel: 'Báo cáo lãi gộp' },
   '/bao-cao-hoat-dong-kinh-doanh': { title: 'Amamy - Báo cáo hoạt động kinh doanh', navBaoCao: true, pageLabel: 'Báo cáo hoạt động kinh doanh' }
 };
@@ -108,7 +108,7 @@ router.get('/doanh-thu', function(req, res) {
     return renderDoanhThuLogin(req, res, '/doanh-thu');
   }
   res.render('pages/amamy_mvp_doanh_thu', {
-    title: 'Amamy - Doanh thu',
+    title: 'Amamy - Báo cáo lãi hoạt động',
     navDoanhThuChiTiet: true
   });
 });

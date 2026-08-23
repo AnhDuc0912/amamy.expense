@@ -47,21 +47,54 @@
   .modal-head .close{background:#eef2f7;padding:8px 11px;border:0;border-radius:10px;font-weight:700;cursor:pointer}
   .toast{position:fixed;right:24px;bottom:24px;background:#111827;color:#fff;padding:12px 16px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.25s;z-index:40}
   .toast.show{opacity:1;transform:translateY(0)}
-  @media(max-width:1100px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:760px){.mvp-page .stats{grid-template-columns:1fr}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
+  @media(max-width:1100px){.mvp-page .stats{grid-template-columns:repeat(3,1fr)}.mvp-page .grid{grid-template-columns:repeat(3,1fr)!important}}
+  @media(max-width:760px){.mvp-page .stats{grid-template-columns:1fr}.mvp-page .grid{grid-template-columns:1fr!important}.mvp-page .page-head{align-items:flex-start;flex-direction:column}}
 </style>
 
 <div class="mvp-page">
   <div class="page-head">
     <div>
       <h1>Báo cáo lãi gộp</h1>
-      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Doanh thu tự động đồng bộ từ dữ liệu đã nhập ở trang Doanh thu; Giá vốn (Công nợ) nhập/sửa tay riêng tại trang này; Phí Viettel Post tự động đồng bộ theo Tháng + Chiều từ trang Chi phí Viettel Post và được cộng vào Tổng giá vốn cho các chiều từ nước ngoài về Việt Nam. Hệ thống tự tính lãi gộp và tỷ suất.</div>
+      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Số khách hàng, Doanh thu nhập tay tại đây (mục Doanh thu, sản lượng) và tự động đồng bộ sang trang Báo cáo lãi hoạt động; Giá vốn (Công nợ) nhập/sửa tay riêng tại trang này; Phí Viettel Post tự động đồng bộ theo Tháng + Chiều từ trang Chi phí Viettel Post và được cộng vào Tổng giá vốn cho các chiều từ nước ngoài về Việt Nam. Hệ thống tự tính lãi gộp và tỷ suất.</div>
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
       <a class="btn-light" style="display:inline-flex;align-items:center;text-decoration:none" href="/doanh-thu/logout?redirect=/doanh-thu-gia-von">Đăng xuất</a>
     </div>
   </div>
+
+  <section class="card">
+    <div class="card-title">DOANH THU, SẢN LƯỢNG</div>
+    <div class="grid" style="display:grid;gap:14px;grid-template-columns:repeat(6,minmax(140px,1fr))">
+      <div>
+        <label>Ngày</label>
+        <input id="entryDate" type="date">
+      </div>
+      <div>
+        <label>Chọn chiều</label>
+        <select id="route"></select>
+      </div>
+      <div>
+        <label>Số kiện</label>
+        <input id="packages" type="number" min="0" placeholder="Ví dụ: 120">
+      </div>
+      <div>
+        <label>Số kg</label>
+        <input id="kg" type="number" min="0" step="0.01" placeholder="Ví dụ: 1.250">
+      </div>
+      <div>
+        <label>Số khách hàng</label>
+        <input id="customers" type="number" min="0" placeholder="Ví dụ: 45">
+      </div>
+      <div>
+        <label>Doanh thu</label>
+        <input id="revenue" inputmode="numeric" placeholder="Ví dụ: 250.000.000">
+      </div>
+    </div>
+    <div style="margin-top:15px;display:flex;justify-content:flex-end">
+      <button class="btn-primary" onclick="addRecord()">+ Thêm dữ liệu</button>
+    </div>
+  </section>
 
   <section class="stats">
     <div class="stat"><span>TỔNG DOANH THU</span><strong id="sRevenue">0 đ</strong></div>
@@ -99,6 +132,7 @@
             <th>CHIỀU VẬN CHUYỂN</th>
             <th>SỐ KIỆN</th>
             <th>SỐ KG</th>
+            <th>SỐ KHÁCH HÀNG</th>
             <th>DOANH THU</th>
             <th>GIÁ VỐN (CÔNG NỢ)</th>
             <th>PHÍ VIETTEL POST</th>
@@ -170,6 +204,14 @@ async function loadRecords() {
   const payload = await requestJson(`/api/page-records/${SOURCE_PAGE_RECORD_TYPE}`);
   records = (payload.records || []).map(normalizeRecord);
 }
+async function createRecord(record) {
+  const payload = await requestJson(`/api/page-records/${SOURCE_PAGE_RECORD_TYPE}`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({record})
+  });
+  records.unshift(normalizeRecord(payload.record));
+}
 async function loadCostOverrides() {
   const payload = await requestJson(`/api/page-records/${COST_PAGE_RECORD_TYPE}`);
   costOverrides = payload.records || [];
@@ -202,6 +244,7 @@ function normalizeRecord(record) {
     route: routes.includes(record.route) ? record.route : routes[0],
     packages: Number(record.packages) || 0,
     kg: Number(record.kg) || 0,
+    customers: Number(record.customers) || 0,
     revenue: Number(record.revenue) || 0
   };
 }
@@ -272,20 +315,39 @@ function parseMoney(v){return Number(String(v).replace(/[^\d-]/g,""))||0}
 function profit(r){return r.revenue-totalCostOf(r)}
 function margin(r){return r.revenue ? profit(r)/r.revenue*100 : 0}
 function setupRoutes(){
+  document.getElementById("route").innerHTML = routes.map(r=>`<option>${r}</option>`).join("");
   document.getElementById("filterRoute").innerHTML =
     `<option value="">Tất cả chiều</option>` + routes.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
 }
-document.addEventListener("input",e=>{
-  if(e.target.id==="eCost"){
-    const raw=parseMoney(e.target.value);
-    e.target.value=raw?fmt(raw):"";
-  }
+const moneyInputIds = ["revenue","eCost"];
+moneyInputIds.forEach(id=>{
+  document.addEventListener("input",e=>{
+    if(e.target.id===id){
+      const raw=parseMoney(e.target.value);
+      e.target.value=raw?fmt(raw):"";
+    }
+  });
 });
+async function addRecord(){
+  const r={
+    date:entryDate.value,route:route.value,packages:Number(packages.value)||0,
+    kg:Number(kg.value)||0,customers:Number(customers.value)||0,revenue:parseMoney(revenue.value)
+  };
+  const hasManualData = r.packages||r.kg||r.customers||r.revenue;
+  if(!hasManualData){toast("Vui lòng nhập dữ liệu.");return}
+  try {
+    await createRecord(r);render();
+    ["packages","kg","customers","revenue"].forEach(id=>document.getElementById(id).value="");
+    toast("Đã thêm dữ liệu.");
+  } catch (error) {
+    toast(error.message);
+  }
+}
 function render(){
   const tb=document.getElementById("tbody");
   const filtered=records.filter(r=>matchesFilters(r));
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="11" class="empty">Chưa có dữ liệu ở trang Doanh thu.</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="12" class="empty">Chưa có dữ liệu. Hãy nhập ở mục Doanh thu, sản lượng phía trên.</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>{
       const costVal=costOf(r), viettelPostVal=isInboundRoute(r.route)?viettelPostOf(r):0, totalCostVal=totalCostOf(r), profitVal=profit(r), marginVal=margin(r);
@@ -295,6 +357,7 @@ function render(){
         <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
         <td>${fmt(r.packages)}</td>
         <td>${fmt(r.kg)}</td>
+        <td>${fmt(r.customers)}</td>
         <td class="money-revenue">${fmt(r.revenue)}</td>
         <td class="money-cost">${fmt(costVal)}</td>
         <td class="money-cost">${fmt(viettelPostVal)}</td>
@@ -306,14 +369,14 @@ function render(){
     }).join("");
   }
   const total=filtered.reduce((a,r)=>({
-    packages:a.packages+r.packages,kg:a.kg+r.kg,revenue:a.revenue+r.revenue,
+    packages:a.packages+r.packages,kg:a.kg+r.kg,customers:a.customers+r.customers,revenue:a.revenue+r.revenue,
     cost:a.cost+costOf(r),
     viettelPost:a.viettelPost+(isInboundRoute(r.route)?viettelPostOf(r):0),
     totalCost:a.totalCost+totalCostOf(r)
-  }),{packages:0,kg:0,revenue:0,cost:0,viettelPost:0,totalCost:0});
+  }),{packages:0,kg:0,customers:0,revenue:0,cost:0,viettelPost:0,totalCost:0});
   const p=total.revenue-total.totalCost, m=total.revenue?p/total.revenue*100:0;
   document.getElementById("tfoot").innerHTML=`
-    <tr><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td>
+    <tr><td></td><td>TỔNG CỘNG</td><td>${fmt(total.packages)}</td><td>${fmt(total.kg)}</td><td>${fmt(total.customers)}</td>
     <td class="money-revenue">${fmt(total.revenue)}</td><td class="money-cost">${fmt(total.cost)}</td>
     <td class="money-cost">${fmt(total.viettelPost)}</td><td class="money-cost">${fmt(total.totalCost)}</td>
     <td class="money-profit${p<0?" negative":""}">${fmt(p)}</td>
@@ -356,8 +419,8 @@ async function saveEditCost(){
 }
 window.onclick=e=>{if(e.target===modal)closeModal()}
 function exportCSV(){
-  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Doanh thu","Giá vốn (Công nợ)","Phí Viettel Post","Tổng giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
-  records.filter(r=>matchesFilters(r)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.revenue,costOf(r),isInboundRoute(r.route)?viettelPostOf(r):0,totalCostOf(r),profit(r),margin(r).toFixed(2)+"%"]));
+  const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Số khách hàng","Doanh thu","Giá vốn (Công nợ)","Phí Viettel Post","Tổng giá vốn","Lãi gộp","Tỷ suất lãi gộp"]];
+  records.filter(r=>matchesFilters(r)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.customers,r.revenue,costOf(r),isInboundRoute(r.route)?viettelPostOf(r):0,totalCostOf(r),profit(r),margin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bao-cao-lai-gop.csv";a.click();
@@ -368,6 +431,7 @@ function toast(msg){
   setTimeout(()=>t.classList.remove("show"),1800);
 }
 async function init(){
+  entryDate.valueAsDate = new Date();
   setupRoutes();
   setupDateFilterPickers();
   render();
