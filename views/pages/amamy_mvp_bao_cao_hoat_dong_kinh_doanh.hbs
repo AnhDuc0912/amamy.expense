@@ -565,8 +565,9 @@ function render() {
 async function init() {
   setupDateFilterPickers();
   try {
-    const [doanhThu, giaVon, viettelPostAlloc, adsAlloc, marketing, khieuNai, vanHanh, bootstrap, nhanSu] = await Promise.all([
+    const [doanhThu, doanhThuSanLuong, giaVon, viettelPostAlloc, adsAlloc, marketing, khieuNai, vanHanh, bootstrap, nhanSu] = await Promise.all([
       requestJson("/api/page-records/doanh-thu"),
+      requestJson("/api/page-records/doanh-thu-san-luong"),
       requestJson("/api/page-records/gia-von"),
       requestJson("/api/page-records/chi-phi-viettel-post-phan-bo-chieu"),
       requestJson("/api/page-records/marketing-phan-bo-chieu"),
@@ -576,7 +577,7 @@ async function init() {
       requestJson("/api/bootstrap"),
       requestJson("/api/page-records/nhan-su")
     ]);
-    sourceData.doanhThu = doanhThu.records || [];
+    sourceData.doanhThu = (doanhThu.records || []).concat(doanhThuSanLuong.records || []);
     sourceData.giaVon = giaVon.records || [];
     sourceData.viettelPostAlloc = viettelPostAlloc.records || [];
     sourceData.adsAlloc = adsAlloc.records || [];

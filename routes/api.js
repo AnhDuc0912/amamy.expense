@@ -36,6 +36,7 @@ var pageRecordTypes = [
   'nhan-su',
   'doanh-thu-gia-von',
   'doanh-thu',
+  'doanh-thu-san-luong',
   'lich-lam-tu-van'
 ];
 

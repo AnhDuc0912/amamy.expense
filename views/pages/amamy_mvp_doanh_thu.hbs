@@ -60,7 +60,7 @@
   <div class="page-head">
     <div>
       <h1>Báo cáo lãi hoạt động</h1>
-      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Số khách hàng, Doanh thu tự động đồng bộ từ dữ liệu đã nhập ở trang Báo cáo lãi gộp (mục Doanh thu, sản lượng); tên nhân viên phụ trách và chi phí khác nhập/sửa tay riêng tại trang này (bấm Sửa ở từng dòng); Giá vốn, Ads, Marketing, Đền bù, Ưu đãi, Phí Viettel Post, Phí nhân viên phụ trách và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
+      <div class="sub">Ngày, Chiều, Số kiện, Số kg, Số khách hàng, Doanh thu tự động đồng bộ từ dữ liệu đã nhập ở trang Doanh thu, sản lượng; tên nhân viên phụ trách và chi phí khác nhập/sửa tay riêng tại trang này (bấm Sửa ở từng dòng); Giá vốn, Ads, Marketing, Đền bù, Ưu đãi, Phí Viettel Post, Phí nhân viên phụ trách và Phí hoạt động cửa hàng tự động đồng bộ theo Tháng + Chiều từ các trang tương ứng.</div>
     </div>
     <div class="toolbar">
       <button class="btn-light" onclick="exportCSV()">Xuất CSV</button>
@@ -165,7 +165,7 @@ const routes = ["Việt Nhật","Nhật Việt","Mỹ Việt","Việt Mỹ","Vi�
 const colors = ["#2563eb","#6b7280","#fb923c","#059669","#14b8a6","#f97316","#ea580c","#1d8cf8","#4b5563","#b87333","#f97316","#14b8a6","#7e22ce"];
 const editableCostFields = ["otherCost"];
 const autoCostFields = ["ads","viettelPost","staffFee","marketing","compensation","discount","storeOpFee"];
-const PAGE_RECORD_TYPE = "doanh-thu";
+const PAGE_RECORD_TYPES = ["doanh-thu-san-luong", "doanh-thu"];
 let records = [];
 let editId = null;
 function currentMonthKey() {
@@ -199,8 +199,10 @@ async function requestJson(url, options) {
   return payload;
 }
 async function loadRecords() {
-  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}`);
-  records = (payload.records || []).map(normalizeRecord);
+  const payloads = await Promise.all(PAGE_RECORD_TYPES.map(type => requestJson(`/api/page-records/${type}`)));
+  records = payloads.flatMap((payload, i) =>
+    (payload.records || []).map(record => normalizeRecord(record, PAGE_RECORD_TYPES[i]))
+  );
 }
 function monthKey(dateStr){ return String(dateStr || "").slice(0, 7); }
 function bucketKey(route, dateStr){ return route + "|" + monthKey(dateStr); }
@@ -273,26 +275,27 @@ function attachAutoCosts(rows) {
     };
   });
 }
-async function updateRecord(id, record) {
-  const payload = await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+async function updateRecord(type, id, record) {
+  const payload = await requestJson(`/api/page-records/${type}/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({record})
   });
-  const updated = normalizeRecord(payload.record);
+  const updated = normalizeRecord(payload.record, type);
   records = records.map(item => item.id === id ? updated : item);
 }
-async function removeRecord(id, actor, password) {
-  await requestJson(`/api/page-records/${PAGE_RECORD_TYPE}/${encodeURIComponent(id)}`, {
+async function removeRecord(type, id, actor, password) {
+  await requestJson(`/api/page-records/${type}/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({actor, password})
   });
   records = records.filter(item => item.id !== id);
 }
-function normalizeRecord(record) {
+function normalizeRecord(record, type) {
   const r = {
     id: record.id,
+    _type: type,
     date: record.date || "",
     route: routes.includes(record.route) ? record.route : routes[0],
     packages: Number(record.packages) || 0,
@@ -387,7 +390,7 @@ function render(){
   const tb=document.getElementById("tbody");
   const filtered=attachAutoCosts(records.filter(r=>matchesFilters(r)));
   if(!filtered.length){
-    tb.innerHTML=`<tr><td colspan="21" class="empty">Chưa có dữ liệu. Hãy nhập ở trang Báo cáo lãi gộp (mục Doanh thu, sản lượng).</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="21" class="empty">Chưa có dữ liệu. Hãy nhập ở trang Doanh thu, sản lượng.</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>{
       const profit=operatingProfit(r), marginVal=operatingMargin(r);
@@ -480,13 +483,14 @@ async function saveEdit(){
     updated[f]=parseMoney(document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value);
   });
   try {
-    await updateRecord(editId, updated);
+    await updateRecord(records[i]._type, editId, updated);
     render();closeModal();toast("Đã cập nhật dữ liệu.");
   } catch (error) {
     toast(error.message);
   }
 }
 async function deleteRecord(id){
+  const r=records.find(x=>x.id===id); if(!r)return;
   if(!confirm("Bạn chắc chắn muốn xóa dòng này?"))return;
   const actor = prompt("Nhập tên người xoá");
   if(actor === null) return;
@@ -494,7 +498,7 @@ async function deleteRecord(id){
   const password = prompt("Nhập mật khẩu xoá phiếu");
   if(password === null) return;
   try {
-    await removeRecord(id, actor, password);
+    await removeRecord(r._type, id, actor, password);
     selectedIds.delete(id);
     render();toast("Đã xóa dữ liệu.");
   } catch (error) {
@@ -502,9 +506,9 @@ async function deleteRecord(id){
   }
 }
 async function bulkDelete(){
-  const ids = records.filter(r=>selectedIds.has(r.id)).map(r=>r.id);
-  if(!ids.length){toast("Vui lòng chọn ít nhất một dòng để xóa.");return}
-  if(!confirm(`Xóa ${ids.length} dòng đã chọn?`))return;
+  const targets = records.filter(r=>selectedIds.has(r.id));
+  if(!targets.length){toast("Vui lòng chọn ít nhất một dòng để xóa.");return}
+  if(!confirm(`Xóa ${targets.length} dòng đã chọn?`))return;
   const actor = prompt("Nhập tên người xoá");
   if(actor === null) return;
   if(!actor.trim()){toast("Vui lòng nhập tên người xoá.");return}
@@ -512,9 +516,9 @@ async function bulkDelete(){
   if(password === null) return;
   let success=0;
   try {
-    for (const id of ids) {
-      await removeRecord(id, actor, password);
-      selectedIds.delete(id);
+    for (const r of targets) {
+      await removeRecord(r._type, r.id, actor, password);
+      selectedIds.delete(r.id);
       success++;
     }
     render();toast(`Đã xóa ${success} dòng đã chọn.`);
@@ -531,8 +535,8 @@ async function resetData(){
   const password = prompt("Nhập mật khẩu xoá phiếu");
   if(password === null) return;
   try {
-    const ids = records.map(record => record.id);
-    for (const id of ids) await removeRecord(id, actor, password);
+    const targets = records.map(record => ({ id: record.id, type: record._type }));
+    for (const t of targets) await removeRecord(t.type, t.id, actor, password);
     selectedIds.clear();
     render();toast("Đã xóa toàn bộ dữ liệu.");
   } catch (error) {

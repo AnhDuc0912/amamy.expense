@@ -93,6 +93,13 @@ router.get('/lich-lam-tu-van', function(req, res) {
   });
 });
 
+router.get('/doanh-thu-san-luong', function(req, res) {
+  res.render('pages/amamy_mvp_doanh_thu_san_luong', {
+    title: 'Amamy - Doanh thu, sản lượng',
+    navDoanhThuSanLuong: true
+  });
+});
+
 router.get('/doanh-thu-gia-von', function(req, res) {
   if (!hasDoanhThuAccess(req)) {
     return renderDoanhThuLogin(req, res, '/doanh-thu-gia-von');
