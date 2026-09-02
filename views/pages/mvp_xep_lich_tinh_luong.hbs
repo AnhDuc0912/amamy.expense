@@ -421,6 +421,11 @@
           <button class="ghost" onclick="exportCSV()">Xuất CSV lương</button>
           <button class="ghost" id="toggleMoneyBtn" onclick="toggleMoney()">👁 Hiện lương ca</button>
           <button class="ghost" id="toggleMonthSalaryBtn" onclick="toggleMonthSalary()">📅 Hiện lương theo tháng</button>
+          <div>
+            <label>Nhân viên</label>
+            <select id="empMonthSelect"></select>
+          </div>
+          <button class="ghost" onclick="openEmployeeMonthModal()">🧾 Lương tháng theo NV</button>
         </div>
 
         <div class="kpis">
@@ -500,6 +505,23 @@
       <button class="ghost" onclick="closeRateModal()">Hủy</button>
       <button class="primary" onclick="saveRate()">Lưu mức lương</button>
     </div>
+  </div>
+</div>
+
+<div class="lltv modal" id="empMonthModal">
+  <div class="modal-card" style="width:min(1100px, 96vw); max-height:92vh; overflow:auto">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+      <h2 id="empMonthTitle" style="margin:0"></h2>
+      <div style="display:flex; gap:8px; align-items:center">
+        <label style="margin:0">Tháng</label>
+        <input type="month" id="empMonthPicker" />
+        <button class="ghost" id="empMonthMoneyBtn" onclick="toggleEmpMonthMoney()">👁 Hiện lương</button>
+        <button class="ghost" onclick="printEmployeeMonth()">🖨 In</button>
+        <button class="ghost" onclick="closeEmployeeMonthModal()">Đóng</button>
+      </div>
+    </div>
+    <div class="kpis" id="empMonthKpis" style="margin-top:12px"></div>
+    <div class="table-wrap" id="empMonthTables" style="margin-top:12px"></div>
   </div>
 </div>
 
@@ -930,7 +952,87 @@
       document.getElementById('toggleMonthSalaryBtn').textContent = monthSalaryMode ? '📅 Hiện lương theo tuần' : '📅 Hiện lương theo tháng';
       renderSummary();
     }
-    function render() { renderDefaultRates(); renderEmployees(); renderSchedule(); renderSummary(); }
+    let empMonthMoneyVisible = false;
+
+    function populateEmpMonthSelect() {
+      const sel = document.getElementById('empMonthSelect');
+      const prev = sel.value;
+      sel.innerHTML = employees.map(e => `<option>${e.name}</option>`).join('');
+      if (prev && employees.some(e => e.name === prev)) sel.value = prev;
+    }
+
+    function weeksOfMonth(monthVal) {
+      const [y, m] = monthVal.split('-').map(Number);
+      const firstDay = new Date(y, m - 1, 1);
+      const lastDay = new Date(y, m, 0);
+      const weeks = [];
+      let cursor = mondayOf(firstDay);
+      while (cursor <= lastDay) {
+        weeks.push(Array.from({ length: 7 }, (_, i) => dateAdd(cursor, i)));
+        cursor = dateAdd(cursor, 7);
+      }
+      return weeks;
+    }
+
+    function openEmployeeMonthModal() {
+      const empName = document.getElementById('empMonthSelect').value;
+      if (!empName) { alert('Chưa có nhân viên nào.'); return; }
+      const monthPicker = document.getElementById('empMonthPicker');
+      if (!monthPicker.value) monthPicker.value = document.getElementById('monthFilter').value || document.getElementById('weekStart').value.slice(0, 7);
+      document.getElementById('empMonthModal').classList.add('open');
+      renderEmployeeMonthView();
+    }
+    function closeEmployeeMonthModal() { document.getElementById('empMonthModal').classList.remove('open'); }
+    function toggleEmpMonthMoney() {
+      empMonthMoneyVisible = !empMonthMoneyVisible;
+      document.getElementById('empMonthMoneyBtn').textContent = empMonthMoneyVisible ? '🙈 Ẩn lương' : '👁 Hiện lương';
+      renderEmployeeMonthView();
+    }
+    function printEmployeeMonth() { window.print(); }
+
+    function renderEmployeeMonthView() {
+      const empName = document.getElementById('empMonthSelect').value;
+      const monthVal = document.getElementById('empMonthPicker').value;
+      if (!empName || !monthVal) return;
+      const [y, m] = monthVal.split('-').map(Number);
+      document.getElementById('empMonthTitle').textContent = `Lương tháng ${m}/${y} — ${empName}`;
+
+      const weeks = weeksOfMonth(monthVal);
+      const monthDates = new Set(currentMonthDatesFor(monthVal));
+      let monthMinutes = 0, monthPay = 0, monthShiftCount = 0;
+
+      let tablesHtml = '';
+      weeks.forEach((week, wi) => {
+        let weekMinutes = 0, weekPay = 0, weekShiftCount = 0;
+        let rows = '';
+        week.forEach(d => {
+          const ds = iso(d);
+          const inMonth = monthDates.has(ds);
+          const dayShifts = inMonth ? shifts.filter(s => s.employee === empName && s.date === ds).sort((a, b) => a.start.localeCompare(b.start)) : [];
+          const dayMinutes = dayShifts.reduce((a, s) => a + getShiftMinutes(s), 0);
+          const dayPay = dayShifts.reduce((a, s) => a + calcShiftPay(s), 0);
+          weekMinutes += dayMinutes; weekPay += dayPay; weekShiftCount += dayShifts.length;
+          const holidayTag = isHoliday(ds) ? ' 🎉' : '';
+          const shiftsHtml = dayShifts.map(s => `<div>${s.start}–${s.end} · ${(getShiftMinutes(s) / 60).toFixed(2)}g${empMonthMoneyVisible ? ' · ' + fmtMoney(calcShiftPay(s)) : ''}</div>`).join('') || (inMonth ? '<span class="muted">—</span>' : '');
+          rows += `<td${inMonth ? '' : ' style="opacity:.35"'}><div class="muted" style="font-size:12px">${DAYS[d.getDay()]} ${d.toLocaleDateString('vi-VN')}${holidayTag}</div>${shiftsHtml}</td>`;
+        });
+        monthMinutes += weekMinutes; monthPay += weekPay; monthShiftCount += weekShiftCount;
+        tablesHtml += `<table style="margin-bottom:14px"><thead><tr><th colspan="7">Tuần ${wi + 1} (${week[0].toLocaleDateString('vi-VN')} – ${week[6].toLocaleDateString('vi-VN')}) · ${weekShiftCount} ca · ${(weekMinutes / 60).toFixed(2)} giờ${empMonthMoneyVisible ? ' · ' + fmtMoney(weekPay) : ''}</th></tr></thead><tbody><tr>${rows}</tr></tbody></table>`;
+      });
+      document.getElementById('empMonthTables').innerHTML = tablesHtml;
+      document.getElementById('empMonthKpis').innerHTML = `
+        <div class="kpi"><div class="muted">Tổng số ca (tháng)</div><div class="v">${monthShiftCount}</div></div>
+        <div class="kpi"><div class="muted">Tổng giờ (tháng)</div><div class="v">${(monthMinutes / 60).toFixed(2)}</div></div>
+        <div class="kpi"><div class="muted">Tổng lương tháng</div><div class="v money">${empMonthMoneyVisible ? fmtMoney(monthPay) : '•••'}</div></div>`;
+    }
+
+    function currentMonthDatesFor(monthVal) {
+      const [y, m] = monthVal.split('-').map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      return Array.from({ length: daysInMonth }, (_, i) => iso(new Date(y, m - 1, i + 1)));
+    }
+
+    function render() { renderDefaultRates(); renderEmployees(); renderSchedule(); renderSummary(); populateEmpMonthSelect(); }
 
     function syncMonthFilter() {
       const ws = document.getElementById('weekStart').value;
@@ -974,6 +1076,9 @@
     });
     document.getElementById('shiftModal').addEventListener('click', e => { if (e.target.id === 'shiftModal') closeShiftModal(); });
     document.getElementById('rateModal').addEventListener('click', e => { if (e.target.id === 'rateModal') closeRateModal(); });
+    document.getElementById('empMonthModal').addEventListener('click', e => { if (e.target.id === 'empMonthModal') closeEmployeeMonthModal(); });
+    document.getElementById('empMonthPicker').addEventListener('change', renderEmployeeMonthView);
+    document.getElementById('empMonthSelect').addEventListener('change', () => { if (document.getElementById('empMonthModal').classList.contains('open')) renderEmployeeMonthView(); });
 
     document.getElementById('weekStart').value = iso(mondayOf(new Date()));
     syncMonthFilter();
@@ -997,5 +1102,10 @@
     window.toggleMonthSalary = toggleMonthSalary;
     window.toggleHoliday = toggleHoliday;
     window.toggleEmployeeMoney = toggleEmployeeMoney;
+    window.openEmployeeMonthModal = openEmployeeMonthModal;
+    window.closeEmployeeMonthModal = closeEmployeeMonthModal;
+    window.toggleEmpMonthMoney = toggleEmpMonthMoney;
+    window.printEmployeeMonth = printEmployeeMonth;
+    window.renderEmployeeMonthView = renderEmployeeMonthView;
   })();
 </script>

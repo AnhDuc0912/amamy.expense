@@ -6,6 +6,8 @@ module.exports = {
     'Việt Canada',
     'Việt Pháp',
     'Việt Nhật',
+    'Việt Nhật Đông Lạnh',
+    'Việt Hàn',
     'Việt Séc',
     'Việt Đức',
     'Việt Châu Âu',
