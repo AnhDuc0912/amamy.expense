@@ -135,7 +135,7 @@
 <div id="modal" class="modal">
   <div class="modal-box">
     <div class="modal-head">
-      <h3 style="margin:0">Sửa dữ liệu</h3>
+      <h3 id="modalTitle" style="margin:0">Sửa dữ liệu</h3>
       <button class="close" onclick="closeModal()">✕</button>
     </div>
     <div class="modal-grid">
@@ -218,6 +218,44 @@ function buildSumMap(items, routeFn, dateFn, amountFn, filterFn) {
 function autoValue(map, route, date) {
   return map[bucketKey(route, date)] || 0;
 }
+function allCostMaps() {
+  return [giaVonMap, adsMap, viettelPostMap, staffFeeMap, marketingMap, compensationMap, discountMap, storeOpFeeMap];
+}
+function buildMissingRevenueRows() {
+  const existingBuckets = new Set(records.map(r => bucketKey(r.route, r.date)));
+  const routeSet = new Set(routes);
+  const missingKeys = new Set();
+  allCostMaps().forEach(map => {
+    Object.keys(map).forEach(key => {
+      if (existingBuckets.has(key)) return;
+      if (!(map[key] > 0)) return;
+      missingKeys.add(key);
+    });
+  });
+  return Array.from(missingKeys).filter(key => {
+    if (!/\|\d{4}-\d{2}$/.test(key)) return false;
+    const route = key.slice(0, key.lastIndexOf("|"));
+    return routeSet.has(route);
+  }).map(key => {
+    const sep = key.lastIndexOf("|");
+    const route = key.slice(0, sep);
+    const month = key.slice(sep + 1);
+    return {
+      id: "virtual:" + key,
+      _type: "virtual",
+      _virtual: true,
+      date: month ? month + "-01" : "",
+      route,
+      packages: 0,
+      kg: 0,
+      customers: 0,
+      revenue: 0,
+      staffInCharge: "",
+      createdAt: "",
+      otherCost: 0
+    };
+  });
+}
 async function loadAutoCostMaps() {
   const [khieuNaiPayload, marketingPayload, bootstrapPayload, giaVonPayload, allocPayload, viettelPostAllocPayload, nhanSuPayload] = await Promise.all([
     requestJson("/api/page-records/khieu-nai-den-bu"),
@@ -274,6 +312,16 @@ function attachAutoCosts(rows) {
       storeOpFee: isFirst ? autoValue(storeOpFeeMap, r.route, r.date) : 0
     };
   });
+}
+async function createRecord(type, record) {
+  const payload = await requestJson(`/api/page-records/${type}`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({record})
+  });
+  const created = normalizeRecord(payload.record, type);
+  records = records.concat([created]);
+  return created;
 }
 async function updateRecord(type, id, record) {
   const payload = await requestJson(`/api/page-records/${type}/${encodeURIComponent(id)}`, {
@@ -388,17 +436,18 @@ moneyInputIds.forEach(id=>{
 });
 function render(){
   const tb=document.getElementById("tbody");
-  const filtered=attachAutoCosts(records.filter(r=>matchesFilters(r)));
+  const virtualRows=buildMissingRevenueRows().filter(r=>matchesFilters(r));
+  const filtered=attachAutoCosts(records.filter(r=>matchesFilters(r)).concat(virtualRows));
   if(!filtered.length){
     tb.innerHTML=`<tr><td colspan="21" class="empty">Chưa có dữ liệu. Hãy nhập ở trang Doanh thu, sản lượng.</td></tr>`;
   } else {
     tb.innerHTML=filtered.map((r,i)=>{
       const profit=operatingProfit(r), marginVal=operatingMargin(r);
       return `
-      <tr>
-        <td class="select-col"><input type="checkbox" class="rowCheckbox" onchange="toggleSelectRow('${r.id}', this.checked)" ${selectedIds.has(r.id)?"checked":""}></td>
+      <tr${r._virtual?' style="background:#fffbeb"':''}>
+        <td class="select-col">${r._virtual?"":`<input type="checkbox" class="rowCheckbox" onchange="toggleSelectRow('${r.id}', this.checked)" ${selectedIds.has(r.id)?"checked":""}>`}</td>
         <td>${escapeHtml(r.date)}</td>
-        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}</td>
+        <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i%colors.length]};margin-right:10px"></span>${escapeHtml(r.route)}${r._virtual?' <span title="Chưa có doanh thu, chỉ có chi phí" style="color:#b45309;font-weight:700">(chưa có doanh thu)</span>':''}</td>
         <td>${fmt(r.packages)}</td>
         <td>${fmt(r.kg)}</td>
         <td>${fmt(r.customers)}</td>
@@ -416,10 +465,10 @@ function render(){
         <td class="money-cost">${fmt(totalCost(r))}</td>
         <td class="money-profit${profit<0?" negative":""}">${fmt(profit)}</td>
         <td class="margin${marginVal<0?" negative":""}">${marginVal.toFixed(2)}%</td>
-        <td><div class="row-actions">
-          <button class="edit" onclick="openEdit('${r.id}')">✎ Sửa</button>
-          <button class="delete" onclick="deleteRecord('${r.id}')">🗑 Xóa</button>
-        </div></td>
+        <td><div class="row-actions">${r._virtual?
+          `<button class="edit" onclick="openEdit('${r.id}')">＋ Bổ sung</button>`:
+          `<button class="edit" onclick="openEdit('${r.id}')">✎ Sửa</button>
+          <button class="delete" onclick="deleteRecord('${r.id}')">🗑 Xóa</button>`}</div></td>
       </tr>`;
     }).join("");
   }
@@ -443,7 +492,7 @@ function render(){
   sRevenue.textContent=money(total.revenue); sCostOfGoods.textContent=money(total.cost);
   sCost.textContent=money(totalCostSum);
   sProfit.textContent=money(p); sMargin.textContent=m.toFixed(2)+"%";
-  updateSelectionUI(filtered);
+  updateSelectionUI(filtered.filter(r=>!r._virtual));
 }
 function toggleSelectRow(id, checked){
   if(checked) selectedIds.add(id); else selectedIds.delete(id);
@@ -465,8 +514,12 @@ function updateSelectionUI(filtered){
     selectAll.indeterminate = selectedCount>0 && selectedCount<filtered.length;
   }
 }
+function isVirtualId(id){ return String(id).startsWith("virtual:"); }
 function openEdit(id){
-  editId=id; const r=records.find(x=>x.id===id); if(!r)return;
+  editId=id;
+  const r = isVirtualId(id) ? buildMissingRevenueRows().find(x=>x.id===id) : records.find(x=>x.id===id);
+  if(!r)return;
+  document.getElementById("modalTitle").textContent = isVirtualId(id) ? "Bổ sung doanh thu" : "Sửa dữ liệu";
   eDate.value=r.date;eRoute.value=r.route;ePackages.value=r.packages;eKg.value=r.kg;eCustomers.value=r.customers;
   eRevenue.value=fmt(r.revenue);eStaffInCharge.value=r.staffInCharge;
   editableCostFields.forEach(f=>{
@@ -476,13 +529,18 @@ function openEdit(id){
 }
 function closeModal(){modal.classList.remove("show");editId=null}
 async function saveEdit(){
-  const i=records.findIndex(x=>x.id===editId); if(i<0)return;
   const updated={date:eDate.value,route:eRoute.value,packages:Number(ePackages.value)||0,kg:Number(eKg.value)||0,
     customers:Number(eCustomers.value)||0,revenue:parseMoney(eRevenue.value),staffInCharge:eStaffInCharge.value.trim()};
   editableCostFields.forEach(f=>{
     updated[f]=parseMoney(document.getElementById("e"+f[0].toUpperCase()+f.slice(1)).value);
   });
   try {
+    if (isVirtualId(editId)) {
+      await createRecord("doanh-thu", updated);
+      render();closeModal();toast("Đã bổ sung doanh thu.");
+      return;
+    }
+    const i=records.findIndex(x=>x.id===editId); if(i<0)return;
     await updateRecord(records[i]._type, editId, updated);
     render();closeModal();toast("Đã cập nhật dữ liệu.");
   } catch (error) {
@@ -545,7 +603,8 @@ async function resetData(){
 }
 function exportCSV(){
   const rows=[["Ngày","Chiều vận chuyển","Số kiện","Số kg","Số khách hàng","Doanh thu","Giá vốn","Ads","Marketing","Đền bù","Ưu đãi","Phí Viettel Post","Phí hoạt động cửa hàng","NV phụ trách","Phí nhân viên phụ trách","Chi phí khác","Tổng chi phí","Lãi hoạt động","Tỉ suất lãi hoạt động"]];
-  attachAutoCosts(records.filter(r=>matchesFilters(r))).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.customers,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.viettelPost,r.storeOpFee,r.staffInCharge,r.staffFee,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
+  const virtualRows=buildMissingRevenueRows().filter(r=>matchesFilters(r));
+  attachAutoCosts(records.filter(r=>matchesFilters(r)).concat(virtualRows)).forEach(r=>rows.push([r.date,r.route,r.packages,r.kg,r.customers,r.revenue,r.cost,r.ads,r.marketing,r.compensation,r.discount,r.viettelPost,r.storeOpFee,r.staffInCharge,r.staffFee,r.otherCost,totalCost(r),operatingProfit(r),operatingMargin(r).toFixed(2)+"%"]));
   const csv="﻿"+rows.map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="doanh-thu.csv";a.click();
