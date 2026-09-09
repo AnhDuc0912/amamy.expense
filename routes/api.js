@@ -6,6 +6,22 @@ var doanhThuAccess = require('../services/doanhThuAccess');
 
 var DOANH_THU_COOKIE = 'doanhThuAccess';
 
+var apiKeys = String(process.env.API_KEYS || '')
+  .split(',')
+  .map(function(key) { return key.trim(); })
+  .filter(Boolean);
+
+function requireApiKey(req, res, next) {
+  if (!apiKeys.length) {
+    return sendError(res, 500, 'Server chưa cấu hình API key');
+  }
+  var provided = req.get('x-api-key') || (req.query && req.query.apiKey);
+  if (!provided || apiKeys.indexOf(String(provided)) === -1) {
+    return sendError(res, 401, 'API key không hợp lệ');
+  }
+  next();
+}
+
 var doanhThuProtectedPages = ['doanh-thu', 'doanh-thu-gia-von'];
 
 function requiresDoanhThuAuth(page, req) {
@@ -88,6 +104,44 @@ function validDate(value) {
   return date.getUTCFullYear() === parts[0] &&
     date.getUTCMonth() === parts[1] - 1 &&
     date.getUTCDate() === parts[2];
+}
+
+var SHIFT_SCHEDULE_PAGE = 'lich-lam-tu-van';
+
+function validTime(value) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value || '');
+}
+
+function toMinutes(value) {
+  var parts = String(value || '').split(':').map(Number);
+  return (parts[0] || 0) * 60 + (parts[1] || 0);
+}
+
+function nowInVietnam() {
+  var parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date()).reduce(function(result, part) {
+    result[part.type] = part.value;
+    return result;
+  }, {});
+  return {
+    date: parts.year + '-' + parts.month + '-' + parts.day,
+    time: parts.hour + ':' + parts.minute
+  };
+}
+
+function shiftCoversMinute(shift, minute) {
+  var start = toMinutes(shift.start);
+  var end = toMinutes(shift.end);
+  if (end <= start) end += 1440;
+  if (minute < start) minute += 1440;
+  return minute >= start && minute < end;
 }
 
 function publicExpense(expense) {
@@ -366,6 +420,38 @@ router.get('/health', async function(req, res, next) {
       status: 'ok',
       database: health.database,
       time: new Date().toISOString()
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/nhan-vien-truc-ca', requireApiKey, async function(req, res, next) {
+  try {
+    var now = nowInVietnam();
+    var date = validDate(req.query.date) ? req.query.date : now.date;
+    var time = validTime(req.query.time) ? req.query.time : now.time;
+    var minute = toMinutes(time);
+
+    var records = await store.listPageRecords(SHIFT_SCHEDULE_PAGE);
+    var shiftsToday = records.filter(function(record) {
+      return record.kind === 'shift' && !record.deleted && record.date === date;
+    });
+    var onDuty = shiftsToday.filter(function(shift) {
+      return shiftCoversMinute(shift, minute);
+    }).map(function(shift) {
+      return {
+        employee: shift.employee,
+        start: shift.start,
+        end: shift.end,
+        note: shift.note || ''
+      };
+    });
+
+    res.json({
+      date: date,
+      time: time,
+      employees: onDuty
     });
   } catch (error) {
     next(error);

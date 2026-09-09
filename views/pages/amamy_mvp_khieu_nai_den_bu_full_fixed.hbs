@@ -176,6 +176,9 @@
     <section class="card">
       <h2>Tạo phiếu đền bù</h2>
 
+      <label>Ngày</label>
+      <input id="recordDate" type="text" placeholder="Chọn ngày" />
+
       <label>Người chi</label>
       <select id="payer">
         <option>Long</option>
@@ -504,6 +507,10 @@
       const locale = flatpickr.l10ns && flatpickr.l10ns.vn ? flatpickr.l10ns.vn : "default";
       const commonDateOptions = { altInput: true, altFormat: "d/m/Y", dateFormat: "Y-m-d", allowInput: true, locale, disableMobile: true };
 
+      datePickers.record = flatpickr(document.getElementById("recordDate"), Object.assign({}, commonDateOptions, {
+        defaultDate: new Date().toISOString().slice(0, 10)
+      }));
+
       if (typeof monthSelectPlugin === "function") {
         datePickers.month = flatpickr(document.getElementById("filterMonth"), {
           altInput: true, altFormat: "F Y", dateFormat: "Y-m", locale, disableMobile: true,
@@ -629,9 +636,15 @@
         return;
       }
 
+      const recordDate = toIsoDate(document.getElementById("recordDate").value);
+      if (!recordDate) {
+        alert("Vui lòng chọn ngày");
+        return;
+      }
+
       try {
         await saveRecord({
-          date: new Date().toISOString().slice(0, 10),
+          date: recordDate,
           payer: document.getElementById("payer").value,
           route: document.getElementById("route").value,
           category: getCategoryText(),
@@ -651,6 +664,7 @@
       document.getElementById("partnerAmount").value = "";
       document.getElementById("note").value = "";
       document.getElementById("otherReason").value = "";
+      if (datePickers.record) datePickers.record.setDate(new Date(), true);
       updateLossPreview();
       renderTable();
     }

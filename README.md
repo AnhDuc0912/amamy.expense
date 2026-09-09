@@ -15,6 +15,10 @@ Mở `http://localhost:3000`.
 Sao chép `.env.example` thành `.env`, sau đó cấu hình `MONGODB_URI` và
 `MONGODB_DB`.
 
+Với các API tích hợp bên ngoài (đánh dấu 🔑 bên dưới), cấu hình `API_KEYS`
+trong `.env` (một hoặc nhiều key, phân tách bằng dấu phẩy) và gửi kèm header
+`x-api-key: <key>` (hoặc query `?apiKey=<key>`) khi gọi.
+
 Lệnh `npm run db:init` kiểm tra kết nối Atlas và tự tạo các collection/index.
 
 ## Chạy bằng Docker với MongoDB Atlas
@@ -57,3 +61,6 @@ docker compose down
 - `DELETE /api/expenses/:id`
 - `GET /api/receipts/:id`
 - `GET /api/expenses.csv`
+- 🔑 `GET /api/nhan-vien-truc-ca?date=YYYY-MM-DD&time=HH:mm` — danh sách nhân
+  viên đang trực page theo ca (mặc định lấy ngày/giờ hiện tại theo giờ Việt
+  Nam), yêu cầu header `x-api-key`
