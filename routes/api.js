@@ -458,6 +458,33 @@ router.get('/nhan-vien-truc-ca', requireApiKey, async function(req, res, next) {
   }
 });
 
+router.get('/lich-truc-ca', requireApiKey, async function(req, res, next) {
+  try {
+    var date = validDate(req.query.date) ? req.query.date : nowInVietnam().date;
+
+    var records = await store.listPageRecords(SHIFT_SCHEDULE_PAGE);
+    var shifts = records.filter(function(record) {
+      return record.kind === 'shift' && !record.deleted && record.date === date;
+    }).map(function(shift) {
+      return {
+        employee: shift.employee,
+        start: shift.start,
+        end: shift.end,
+        note: shift.note || ''
+      };
+    }).sort(function(a, b) {
+      return toMinutes(a.start) - toMinutes(b.start);
+    });
+
+    res.json({
+      date: date,
+      shifts: shifts
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/receipts/:id', async function(req, res, next) {
   try {
     if (!/^[a-f0-9]{32}$/.test(req.params.id)) {

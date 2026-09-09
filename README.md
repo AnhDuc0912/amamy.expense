@@ -64,3 +64,6 @@ docker compose down
 - 🔑 `GET /api/nhan-vien-truc-ca?date=YYYY-MM-DD&time=HH:mm` — danh sách nhân
   viên đang trực page theo ca (mặc định lấy ngày/giờ hiện tại theo giờ Việt
   Nam), yêu cầu header `x-api-key`
+- 🔑 `GET /api/lich-truc-ca?date=YYYY-MM-DD` — toàn bộ lịch trực page trong
+  một ngày (không lọc theo giờ hiện tại, mặc định là hôm nay theo giờ Việt
+  Nam), yêu cầu header `x-api-key`
