@@ -434,14 +434,22 @@ router.get('/nhan-vien-truc-ca', requireApiKey, async function(req, res, next) {
     var minute = toMinutes(time);
 
     var records = await store.listPageRecords(SHIFT_SCHEDULE_PAGE);
+    var employeesByName = {};
+    records.forEach(function(record) {
+      if (record.kind === 'employee' && !record.deleted) {
+        employeesByName[record.name] = record;
+      }
+    });
     var shiftsToday = records.filter(function(record) {
       return record.kind === 'shift' && !record.deleted && record.date === date;
     });
     var onDuty = shiftsToday.filter(function(shift) {
       return shiftCoversMinute(shift, minute);
     }).map(function(shift) {
+      var employee = employeesByName[shift.employee];
       return {
         employee: shift.employee,
+        pancakeName: (employee && employee.pancakeName) || '',
         start: shift.start,
         end: shift.end,
         note: shift.note || ''
@@ -463,11 +471,19 @@ router.get('/lich-truc-ca', requireApiKey, async function(req, res, next) {
     var date = validDate(req.query.date) ? req.query.date : nowInVietnam().date;
 
     var records = await store.listPageRecords(SHIFT_SCHEDULE_PAGE);
+    var employeesByName = {};
+    records.forEach(function(record) {
+      if (record.kind === 'employee' && !record.deleted) {
+        employeesByName[record.name] = record;
+      }
+    });
     var shifts = records.filter(function(record) {
       return record.kind === 'shift' && !record.deleted && record.date === date;
     }).map(function(shift) {
+      var employee = employeesByName[shift.employee];
       return {
         employee: shift.employee,
+        pancakeName: (employee && employee.pancakeName) || '',
         start: shift.start,
         end: shift.end,
         note: shift.note || ''

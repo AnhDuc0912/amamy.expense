@@ -391,6 +391,8 @@
       <h2>Nhân viên</h2>
       <label>Tên nhân viên</label>
       <input id="employeeName" placeholder="Ví dụ: Lan Anh" />
+      <label style="margin-top:8px">Tên Pancake</label>
+      <input id="employeePancake" placeholder="Ví dụ: lananh_pancake" />
       <button class="primary" style="width:100%;margin-top:10px" onclick="addEmployee()">+ Thêm nhân viên</button>
 
       <div class="employee-list" id="employeeList"></div>
@@ -685,7 +687,7 @@
         const body = await res.json();
         const records = body.records || [];
         employees = records.filter(r => r.kind === 'employee' && !r.deleted)
-          .map(r => ({ id: r.id, name: r.name, rateBands: Array.isArray(r.rateBands) ? r.rateBands : undefined, baseRate: r.baseRate }))
+          .map(r => ({ id: r.id, name: r.name, pancakeName: r.pancakeName || '', rateBands: Array.isArray(r.rateBands) ? r.rateBands : undefined, baseRate: r.baseRate }))
           .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
         shifts = records.filter(r => r.kind === 'shift' && !r.deleted)
           .map(r => ({ id: r.id, employee: r.employee, date: r.date, start: r.start, end: r.end, note: r.note || '' }));
@@ -712,11 +714,13 @@
 
     async function addEmployee() {
       const name = document.getElementById('employeeName').value.trim();
+      const pancakeName = document.getElementById('employeePancake').value.trim();
       if (!name) return alert('Vui lòng nhập tên nhân viên.');
       if (employees.some(e => e.name === name)) return alert('Nhân viên đã tồn tại.');
       try {
-        await apiCreate({ kind: 'employee', name: name });
+        await apiCreate({ kind: 'employee', name: name, pancakeName: pancakeName });
         document.getElementById('employeeName').value = '';
+        document.getElementById('employeePancake').value = '';
         await loadData();
       } catch (err) { alert(err.message); }
     }
@@ -725,6 +729,16 @@
       if (!confirm('Xóa nhân viên ' + name + '?')) return;
       try {
         await apiUpdate(id, { kind: 'employee', name: name, deleted: true });
+        await loadData();
+      } catch (err) { alert(err.message); }
+    }
+    async function editPancakeName(id) {
+      const emp = employees.find(e => e.id === id);
+      if (!emp) return;
+      const pancakeName = prompt('Tên Pancake cho ' + emp.name + ':', emp.pancakeName || '');
+      if (pancakeName === null) return;
+      try {
+        await apiUpdate(id, { kind: 'employee', name: emp.name, pancakeName: pancakeName.trim(), rateBands: emp.rateBands, baseRate: emp.baseRate });
         await loadData();
       } catch (err) { alert(err.message); }
     }
@@ -790,7 +804,7 @@
           if (defaultRateId) await apiUpdate(defaultRateId, data);
           else await apiCreate(data);
         } else {
-          await apiUpdate(id, { kind: 'employee', name: emp.name, rateBands: bands, baseRate: base });
+          await apiUpdate(id, { kind: 'employee', name: emp.name, pancakeName: emp.pancakeName, rateBands: bands, baseRate: base });
         }
         closeRateModal();
         await loadData();
@@ -854,8 +868,9 @@
         const rateLabel = (isCustom ? `${bands.length} khung giờ riêng` : 'mức mặc định') + ` · còn lại ${Math.round(base / 1000)}k/h`;
         return `
     <div class="employee-item">
-      <div><strong>${emp.name}</strong><br><small>${shiftCount} ca đã xếp · ${rateLabel}</small></div>
+      <div><strong>${emp.name}</strong>${emp.pancakeName ? ` <small>(Pancake: ${emp.pancakeName})</small>` : ''}<br><small>${shiftCount} ca đã xếp · ${rateLabel}</small></div>
       <div class="employee-actions">
+        <button class="ghost mini" onclick="editPancakeName('${emp.id}')">Sửa Pancake</button>
         <button class="ghost mini" onclick="openRateModal('${emp.id}')">Sửa lương</button>
         <button class="danger mini" onclick="removeEmployee('${emp.id}','${emp.name.replaceAll("'", "\\'")}')">Xóa</button>
       </div>
