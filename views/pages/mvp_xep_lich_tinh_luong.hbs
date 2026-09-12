@@ -493,6 +493,19 @@
   </div>
 </div>
 
+<div class="lltv modal" id="pancakeModal">
+  <div class="modal-card">
+    <h2>Tên Pancake của <span id="pancakeEmployeeName"></span></h2>
+    <input type="hidden" id="pancakeEmployeeId" />
+    <label>Tên Pancake</label>
+    <input id="pancakeNameInput" placeholder="Ví dụ: lananh_pancake" />
+    <div class="modal-actions">
+      <button class="ghost" onclick="closePancakeModal()">Hủy</button>
+      <button class="primary" onclick="savePancakeName()">Lưu</button>
+    </div>
+  </div>
+</div>
+
 <div class="lltv modal" id="rateModal">
   <div class="modal-card">
     <h2>Mức lương của <span id="rateEmployeeName"></span></h2>
@@ -732,13 +745,23 @@
         await loadData();
       } catch (err) { alert(err.message); }
     }
-    async function editPancakeName(id) {
+    function editPancakeName(id) {
       const emp = employees.find(e => e.id === id);
       if (!emp) return;
-      const pancakeName = prompt('Tên Pancake cho ' + emp.name + ':', emp.pancakeName || '');
-      if (pancakeName === null) return;
+      document.getElementById('pancakeEmployeeId').value = id;
+      document.getElementById('pancakeEmployeeName').textContent = emp.name;
+      document.getElementById('pancakeNameInput').value = emp.pancakeName || '';
+      document.getElementById('pancakeModal').classList.add('open');
+    }
+    function closePancakeModal() { document.getElementById('pancakeModal').classList.remove('open'); }
+    async function savePancakeName() {
+      const id = document.getElementById('pancakeEmployeeId').value;
+      const emp = employees.find(e => e.id === id);
+      if (!emp) return;
+      const pancakeName = document.getElementById('pancakeNameInput').value.trim();
       try {
-        await apiUpdate(id, { kind: 'employee', name: emp.name, pancakeName: pancakeName.trim(), rateBands: emp.rateBands, baseRate: emp.baseRate });
+        await apiUpdate(id, { kind: 'employee', name: emp.name, pancakeName: pancakeName, rateBands: emp.rateBands, baseRate: emp.baseRate });
+        closePancakeModal();
         await loadData();
       } catch (err) { alert(err.message); }
     }
@@ -1091,6 +1114,7 @@
     });
     document.getElementById('shiftModal').addEventListener('click', e => { if (e.target.id === 'shiftModal') closeShiftModal(); });
     document.getElementById('rateModal').addEventListener('click', e => { if (e.target.id === 'rateModal') closeRateModal(); });
+document.getElementById('pancakeModal').addEventListener('click', e => { if (e.target.id === 'pancakeModal') closePancakeModal(); });
     document.getElementById('empMonthModal').addEventListener('click', e => { if (e.target.id === 'empMonthModal') closeEmployeeMonthModal(); });
     document.getElementById('empMonthPicker').addEventListener('change', renderEmployeeMonthView);
     document.getElementById('empMonthSelect').addEventListener('change', () => { if (document.getElementById('empMonthModal').classList.contains('open')) renderEmployeeMonthView(); });
@@ -1101,6 +1125,9 @@
 
     window.addEmployee = addEmployee;
     window.removeEmployee = removeEmployee;
+    window.editPancakeName = editPancakeName;
+    window.closePancakeModal = closePancakeModal;
+    window.savePancakeName = savePancakeName;
     window.openRateModal = openRateModal;
     window.closeRateModal = closeRateModal;
     window.saveRate = saveRate;
